@@ -1,6 +1,6 @@
 # Grimoire
 
-An AI-powered worldbuilding companion for writers, game designers, and storytellers. Build fictional worlds incrementally through natural language — Grimoire turns your narration into structured, persistent lore while reasoning across everything you've established to surface ripple effects, flag contradictions, and make proactive suggestions.
+An AI-powered worldbuilding tool for writers, game designers, and storytellers. Build entire fictional worlds incrementally through natural language. Grimoire turns your narration into structured, persistent lore while reasoning across everything you've established to surface ripple effects, flag contradictions, and make proactive suggestions.
 
 ## What it does
 
