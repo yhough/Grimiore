@@ -4,7 +4,7 @@ import { formatRelativeDate } from '@/lib/utils'
 import type { World } from '@/types'
 import { Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const GENRE_GRADIENTS: Record<string, string> = {
   Fantasy: 'from-violet-950 via-purple-900 to-indigo-950',
@@ -39,6 +39,8 @@ interface Props {
 
 export function WorldCard({ world, onDelete }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [relativeDate, setRelativeDate] = useState('')
+  useEffect(() => { setRelativeDate(formatRelativeDate(world.updatedAt)) }, [world.updatedAt])
   const gradient = GENRE_GRADIENTS[world.genre] ?? GENRE_GRADIENTS.Other
   const glyph = GENRE_GLYPHS[world.genre] ?? GENRE_GLYPHS.Other
 
@@ -95,7 +97,7 @@ export function WorldCard({ world, onDelete }: Props) {
         </p>
 
         <p className="text-[11px] text-muted-foreground/60 mt-auto pt-2 border-t border-border">
-          Updated {formatRelativeDate(world.updatedAt)}
+          {relativeDate ? `Updated ${relativeDate}` : null}
         </p>
       </div>
     </Link>
