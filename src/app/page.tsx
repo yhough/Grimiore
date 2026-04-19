@@ -80,7 +80,7 @@ export default function HomePage() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto h-screen">
         {tab === 'home' && <HomeTab books={books} loading={loading} />}
         {tab === 'library' && <LibraryTab books={books} loading={loading} onDelete={handleDelete} />}
       </main>
@@ -94,21 +94,26 @@ function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
   const recent = books.slice(0, 3)
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-12">
-      <div className="mb-10">
-        <h1 className="text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Lumos' }}>
-          Welcome back.
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Pick up where you left off, or start something new.
-        </p>
+    <div className="h-full flex flex-col">
+      <div className="max-w-3xl px-8 py-12">
+        <div className="mb-10">
+          <h1 className="text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Lumos' }}>
+            Welcome back.
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Pick up where you left off, or start something new.
+          </p>
+        </div>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <p className="text-sm text-muted-foreground px-8">Loading...</p>
       ) : books.length === 0 ? (
-        <EmptyState />
+        <div className="flex-1 flex items-center justify-center pb-32">
+          <EmptyState />
+        </div>
       ) : (
+        <div className="max-w-3xl px-8">
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Clock size={13} className="text-muted-foreground" />
@@ -129,6 +134,7 @@ function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
             </button>
           )}
         </section>
+        </div>
       )}
     </div>
   )
