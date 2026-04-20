@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const messages = db
     .prepare(
-      `SELECT id, role, content, metadata, created_at
+      `SELECT id, role, content, metadata, created_at, correction_status, correction_data
        FROM chat_messages
        WHERE book_id = ? AND character_id IS NULL
        ORDER BY created_at ASC`
@@ -15,6 +15,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       content: string
       metadata: string
       created_at: number
+      correction_status: string | null
+      correction_data: string | null
     }>
 
   // Attach ripple cards to each message

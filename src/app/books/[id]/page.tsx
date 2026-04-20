@@ -34,9 +34,8 @@ export default function BookPage({ params }: Props) {
   const [preFillMessage, setPreFillMessage] = useState<string | null>(null)
   const { dark, toggle: toggleTheme } = useTheme()
 
-  function handleResolveViaChat(chapterNumber: number, flagDescription: string) {
-    const words = flagDescription.split(' ').slice(0, 10).join(' ')
-    setPreFillMessage(`Regarding the continuity flag in Chapter ${chapterNumber} — ${words}...`)
+  function handleResolveViaChat(message: string) {
+    setPreFillMessage(message)
     setTab('world')
   }
 
@@ -141,6 +140,14 @@ function WorldTab({
     const el = feedRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, isTyping])
+
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [input])
 
   // Pre-fill textarea when switching to world tab from chapters
   useEffect(() => {
@@ -332,7 +339,7 @@ function WorldTab({
             value={input}
             onChange={(e) => { setInput(e.target.value); if (sendError) setSendError(null) }}
             placeholder="Narrate an event, establish a fact, or ask a question…"
-            className="w-full resize-none rounded-lg border border-input bg-card px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring leading-relaxed"
+            className="w-full resize-none overflow-hidden rounded-lg border border-input bg-card px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring leading-relaxed"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()

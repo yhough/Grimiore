@@ -19,6 +19,8 @@ export interface WorldMessageData {
   metadata: string
   created_at: number
   ripple_cards: RippleCard[]
+  correction_status?: string | null
+  correction_data?: string | null
 }
 
 interface Props {
@@ -49,7 +51,10 @@ export function WorldMessage({
   const pendingRipples = message.ripple_cards.filter((c) => c.status !== 'dismissed')
 
   const isCorrection = meta.input_type === 'correction' || meta.is_correction === true
-  const correctionStatus = (meta.correction_status ?? 'pending_confirmation') as CorrectionStatus
+  // Prefer the authoritative DB column (returned by messages API) over the frozen metadata JSON
+  const correctionStatus = (
+    message.correction_status ?? meta.correction_status ?? 'pending_confirmation'
+  ) as CorrectionStatus
   const correctionData = meta.correction_data
 
   if (message.role === 'user') {

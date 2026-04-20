@@ -17,7 +17,7 @@ interface Props {
   bookId: string
   isExpanded: boolean
   onToggle: () => void
-  onResolveViaChat?: (chapterNumber: number, flagDescription: string) => void
+  onResolveViaChat?: (message: string) => void
 }
 
 function formatDate(date: Date) {
@@ -280,7 +280,13 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              onResolveViaChat(chapter.number, flag.description)
+                              const severityLabel = flag.severity === 'error' ? 'continuity error' : 'continuity warning'
+                              const summaryLine = chapter.summary
+                                ? `\n\nThe chapter summary reads: "${chapter.summary}"`
+                                : ''
+                              const message =
+                                `In Chapter ${chapter.number} — "${chapter.title}" — there is a ${severityLabel}:\n\n"${flag.description}"${summaryLine}\n\nHow should I correct this?`
+                              onResolveViaChat(message)
                             }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--grimm-accent))', fontSize: 12, padding: '4px 0 0', display: 'inline-flex', alignItems: 'center', gap: 3 }}
                           >

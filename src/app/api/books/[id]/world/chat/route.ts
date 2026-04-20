@@ -97,15 +97,20 @@ ALWAYS respond with valid JSON — no markdown, no commentary, just JSON:
       "chapterSummaries": [3]
     },
     "proposedDiff": {
-      "loreEntryUpdates": [{ "name": "...", "field": "...", "oldValue": "...", "newValue": "..." }],
-      "characterUpdates": [{ "name": "...", "field": "...", "oldValue": "...", "newValue": "..." }],
+      "loreEntryUpdates": [{ "name": "exact current name of the lore entry", "field": "summary | data field name", "oldValue": "...", "newValue": "..." }],
+      "characterUpdates": [{ "name": "exact current (old) character name as it exists in lore", "field": "name | description | status | arc_status | any trait key", "oldValue": "...", "newValue": "..." }],
       "chapterSummaryUpdates": [{ "chapterNumber": 3, "oldSentence": "exact sentence", "newSentence": "replacement" }],
       "flagsToResolve": ["flag-id"]
     }
   } | null
 }
 
-For non-correction inputs, correction_data should be null. For corrections, state_updates and ripple_effects should be empty arrays.`
+CRITICAL RULES for proposedDiff:
+- For characterUpdates: "name" MUST be the character's CURRENT name exactly as it appears in the established lore above, not the corrected name. To rename a character use field "name".
+- For loreEntryUpdates: "name" MUST match an exact lore entry name from the established lore above. Do not invent entry names like "CHARACTERS" — only reference entries that actually exist.
+- Valid character fields: "name", "description", "status", "arc_status", or a specific trait key.
+- If a character name is being corrected, put it in characterUpdates with field "name", name set to the OLD spelling, oldValue the old spelling, newValue the correct spelling.
+- For non-correction inputs, correction_data should be null. For corrections, state_updates and ripple_effects should be empty arrays.`
 }
 
 export async function POST(

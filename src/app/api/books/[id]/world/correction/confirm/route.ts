@@ -35,12 +35,19 @@ export async function POST(
 
     // ── Lore entry updates ────────────────────────────────────────────────────
     for (const u of diff.loreEntryUpdates ?? []) {
-      const entry = db.prepare(
-        'SELECT id, summary, data FROM book_state_entries WHERE book_id = ? AND name = ?'
-      ).get(params.id, u.name) as { id: string; summary: string | null; data: string } | undefined
+      // Try exact name first, then fall back to oldValue in case AI used the new name
+      const entry = (
+        db.prepare('SELECT id, summary, data FROM book_state_entries WHERE book_id = ? AND name = ?')
+          .get(params.id, u.name) ??
+        (u.oldValue ? db.prepare('SELECT id, summary, data FROM book_state_entries WHERE book_id = ? AND name = ?')
+          .get(params.id, u.oldValue) : undefined)
+      ) as { id: string; summary: string | null; data: string } | undefined
       if (!entry) continue
 
-      if (u.field === 'summary') {
+      if (u.field === 'name') {
+        db.prepare('UPDATE book_state_entries SET name = ?, updated_at = ? WHERE id = ?')
+          .run(u.newValue, now, entry.id)
+      } else if (u.field === 'summary') {
         db.prepare('UPDATE book_state_entries SET summary = ?, updated_at = ? WHERE id = ?')
           .run(u.newValue, now, entry.id)
       } else {
@@ -54,12 +61,19 @@ export async function POST(
 
     // ── Character updates ─────────────────────────────────────────────────────
     for (const u of diff.characterUpdates ?? []) {
-      const char = db.prepare(
-        'SELECT id, data FROM characters WHERE book_id = ? AND name = ?'
-      ).get(params.id, u.name) as { id: string; data: string } | undefined
+      // Try exact name first, then fall back to oldValue (AI sometimes uses the corrected name as the key)
+      const char = (
+        db.prepare('SELECT id, data FROM characters WHERE book_id = ? AND name = ?')
+          .get(params.id, u.name) ??
+        (u.oldValue ? db.prepare('SELECT id, data FROM characters WHERE book_id = ? AND name = ?')
+          .get(params.id, u.oldValue) : undefined)
+      ) as { id: string; data: string } | undefined
       if (!char) continue
 
-      if (['description', 'status', 'arc_status'].includes(u.field)) {
+      if (u.field === 'name') {
+        db.prepare('UPDATE characters SET name = ?, updated_at = ? WHERE id = ?')
+          .run(u.newValue, now, char.id)
+      } else if (['description', 'status', 'arc_status'].includes(u.field)) {
         db.prepare(`UPDATE characters SET ${u.field} = ?, updated_at = ? WHERE id = ?`)
           .run(u.newValue, now, char.id)
       } else {
@@ -131,7 +145,7 @@ export async function POST(
     db.prepare(
       `INSERT INTO timeline_events
          (id, book_id, title, description, source, source_id, in_story_date, sort_order, created_at, category, is_correction)
-       VALUES (?, ?, ?, ?, 'world_chat', ?, NULL, ?, ?, 'correction', 1)`
+       VALUES (?, ?, ?, ?, 'chat', ?, NULL, ?, ?, 'correction', 1)`
     ).run(
       generateId(),
       params.id,
