@@ -191,9 +191,10 @@ function LibraryTab({
 }) {
   const [query, setQuery] = useState('')
 
-  const filtered = query.trim()
+  const filtered = (query.trim()
     ? books.filter((b) => b.title.toLowerCase().includes(query.trim().toLowerCase()))
     : books
+  ).slice().sort((a, b) => a.title.localeCompare(b.title))
 
   return (
     <div className="px-8 py-12">

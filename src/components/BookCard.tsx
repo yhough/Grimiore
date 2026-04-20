@@ -45,7 +45,7 @@ export function BookCard({ book, onDelete }: Props) {
   const router = useRouter()
   const isMock = book.id === MOCK_BOOK_ID
 
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteStep, setDeleteStep] = useState(0) // 0=hidden 1=first confirm 2=second confirm
   const [relativeDate, setRelativeDate] = useState('')
   const [coverImage, setCoverImage] = useState<string | null>(book.cover_image ?? null)
   const [uploading, setUploading] = useState(false)
@@ -78,11 +78,7 @@ export function BookCard({ book, onDelete }: Props) {
   function handleDelete(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    if (confirmDelete) {
-      onDelete?.(book.id)
-    } else {
-      setConfirmDelete(true)
-    }
+    setDeleteStep(1)
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -118,7 +114,7 @@ export function BookCard({ book, onDelete }: Props) {
   return (
     <div
       className="group relative flex flex-col rounded-xl border border-border bg-card overflow-hidden hover:border-primary/40 transition-all duration-200 hover:shadow-[0_0_24px_rgba(120,80,40,0.1)] cursor-pointer"
-      onMouseLeave={() => { setConfirmDelete(false); setUploadError('') }}
+      onMouseLeave={() => { setDeleteStep(0); setUploadError('') }}
     >
       {/* ── Cover ── */}
       <div
@@ -177,12 +173,8 @@ export function BookCard({ book, onDelete }: Props) {
         {onDelete && (
           <button
             onClick={handleDelete}
-            className={`absolute top-3 right-3 p-1.5 rounded-md transition-all duration-150 ${
-              confirmDelete
-                ? 'bg-red-700 text-white opacity-100'
-                : 'bg-black/40 text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white'
-            }`}
-            title={confirmDelete ? 'Click again to confirm' : 'Delete book'}
+            className="absolute top-3 right-3 p-1.5 rounded-md bg-black/40 text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white transition-all duration-150"
+            title="Delete book"
           >
             <Trash2 size={13} />
           </button>
@@ -197,6 +189,60 @@ export function BookCard({ book, onDelete }: Props) {
           onChange={handleFileChange}
         />
       </div>
+
+      {/* ── Delete confirmation dialog ── */}
+      {deleteStep > 0 && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 rounded-xl"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        >
+          <div className="bg-card border border-border rounded-xl p-5 mx-4 shadow-xl w-full max-w-[220px]">
+            {deleteStep === 1 ? (
+              <>
+                <p className="text-sm font-semibold text-foreground mb-1 truncate">{book.title}</p>
+                <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                  Delete this book and all its data?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteStep(0) }}
+                    className="flex-1 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteStep(2) }}
+                    className="flex-1 px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/90 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-foreground mb-1">Are you sure?</p>
+                <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                  This cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteStep(0) }}
+                    className="flex-1 px-3 py-1.5 rounded-md border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteStep(0); onDelete?.(book.id) }}
+                    className="flex-1 px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/90 transition-colors"
+                  >
+                    Yes, delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Body — keep as Link for right-click / open-in-tab ── */}
       <Link href={href} className="flex flex-col flex-1 p-4 gap-2">
