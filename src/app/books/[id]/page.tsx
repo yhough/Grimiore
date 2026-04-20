@@ -372,6 +372,44 @@ function CharactersTab({ bookId }: { bookId: string }) {
       .catch(() => {})
   }, [bookId, isMock])
 
+  const ROLE_ORDER: Record<string, number> = {
+    protagonist: 0,
+    antagonist: 1,
+    supporting: 2,
+    minor: 3,
+  }
+
+  const ROLE_LABELS: Record<string, string> = {
+    protagonist: 'Protagonists',
+    antagonist: 'Antagonists',
+    supporting: 'Supporting',
+    minor: 'Minor',
+  }
+
+  function charCompleteness(c: CharacterFull) {
+    let score = 0
+    if (c.description) score += 2
+    if (c.arc_status) score += 2
+    try { const d = JSON.parse(c.data); if ((d.traits ?? []).length > 0) score += 1 } catch { /* ok */ }
+    return score
+  }
+
+  const grouped = characters
+    .slice()
+    .sort((a, b) => {
+      const ro = (ROLE_ORDER[a.role] ?? 4) - (ROLE_ORDER[b.role] ?? 4)
+      if (ro !== 0) return ro
+      return charCompleteness(b) - charCompleteness(a)
+    })
+    .reduce<Record<string, CharacterFull[]>>((acc, c) => {
+      const key = ROLE_ORDER[c.role] !== undefined ? c.role : 'minor'
+      if (!acc[key]) acc[key] = []
+      acc[key].push(c)
+      return acc
+    }, {})
+
+  const groupOrder = ['protagonist', 'antagonist', 'supporting', 'minor'].filter((r) => grouped[r]?.length)
+
   return (
     <>
       <div className="h-full overflow-y-auto">
@@ -382,13 +420,28 @@ function CharactersTab({ bookId }: { bookId: string }) {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-4 p-8">
-            {characters.map((char) => (
-              <CharacterCard
-                key={char.id}
-                character={char}
-                onClick={() => setSelected(char)}
-              />
+          <div className="flex flex-col gap-8 p-8">
+            {groupOrder.map((role) => (
+              <section key={role}>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/70">
+                    {ROLE_LABELS[role]}
+                  </span>
+                  <span className="text-xs text-muted-foreground/40 font-normal">
+                    {grouped[role].length}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {grouped[role].map((char) => (
+                    <CharacterCard
+                      key={char.id}
+                      character={char}
+                      onClick={() => setSelected(char)}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}
