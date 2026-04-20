@@ -1,15 +1,17 @@
 'use client'
 
 import { LoreSlideOver, type LoreCategory, type LoreEntry } from '@/components/LoreSlideOver'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 
-const SECTIONS: { key: keyof LoreSections; label: string; dot: string }[] = [
-  { key: 'characters', label: 'Characters',      dot: 'bg-blue-400' },
-  { key: 'factions',   label: 'Factions',        dot: 'bg-amber-400' },
-  { key: 'locations',  label: 'Locations',        dot: 'bg-green-400' },
-  { key: 'magic',      label: 'Magic & Systems',  dot: 'bg-violet-400' },
-  { key: 'misc',       label: 'Lore & Misc',      dot: 'bg-zinc-400' },
+type SectionKey = keyof LoreSections
+
+const SECTIONS: { key: SectionKey; label: string; dot: string; optional: boolean }[] = [
+  { key: 'characters', label: 'Characters',     dot: 'bg-blue-400',   optional: false },
+  { key: 'locations',  label: 'Locations',      dot: 'bg-green-400',  optional: false },
+  { key: 'factions',   label: 'Factions',       dot: 'bg-amber-400',  optional: true  },
+  { key: 'magic',      label: 'Magic & Systems',dot: 'bg-violet-400', optional: true  },
+  { key: 'misc',       label: 'Lore & Misc',    dot: 'bg-zinc-400',   optional: true  },
 ]
 
 interface LoreSections {
@@ -37,8 +39,10 @@ interface Props {
 export const LoreSidebar = forwardRef<LoreSidebarHandle, Props>(function LoreSidebar({ bookId, mockData }, ref) {
   const [data, setData] = useState<LoreData | null>(mockData ?? null)
   const [open, setOpen] = useState<Record<string, boolean>>({
-    characters: true, factions: true, locations: true, magic: true, misc: true,
+    characters: true, locations: true, factions: true, magic: true, misc: true,
   })
+  // Optional sections the user has explicitly unlocked (even if still empty)
+  const [unlocked, setUnlocked] = useState<Set<SectionKey>>(new Set())
   const [selected, setSelected] = useState<LoreEntry | null>(null)
 
   function fetchLore() {
@@ -53,9 +57,17 @@ export const LoreSidebar = forwardRef<LoreSidebarHandle, Props>(function LoreSid
 
   useImperativeHandle(ref, () => ({ refetch: fetchLore }))
 
-  const totalEntries = data
-    ? Object.values(data.sections).reduce((n, s) => n + s.length, 0)
-    : 0
+  const activeSections = SECTIONS.filter(({ key, optional }) => {
+    if (!optional) return true
+    const hasEntries = (data?.sections[key]?.length ?? 0) > 0
+    return hasEntries || unlocked.has(key)
+  })
+
+  const hiddenOptional = SECTIONS.filter(({ key, optional }) => {
+    if (!optional) return false
+    const hasEntries = (data?.sections[key]?.length ?? 0) > 0
+    return !hasEntries && !unlocked.has(key)
+  })
 
   return (
     <>
@@ -72,55 +84,77 @@ export const LoreSidebar = forwardRef<LoreSidebarHandle, Props>(function LoreSid
 
         {/* Sections */}
         <div className="flex-1 overflow-y-auto py-2">
-          {totalEntries === 0 && data ? (
-            <p className="px-4 py-3 text-xs text-muted-foreground/60">
-              No lore yet. Start narrating in the World chat to populate this sidebar.
-            </p>
-          ) : (
-            SECTIONS.map(({ key, label, dot }) => {
-              const entries = data?.sections[key] ?? []
-              const isOpen = open[key]
+          {activeSections.map(({ key, label, dot }) => {
+            const entries = data?.sections[key] ?? []
+            const isOpen = open[key]
 
-              return (
-                <div key={key} className="mb-1">
-                  <button
-                    onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
-                    className="w-full flex items-center gap-2 px-4 py-1.5 hover:bg-muted/50 transition-colors group"
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
-                    <span className="flex-1 text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                      {label}
-                    </span>
-                    {entries.length > 0 && (
-                      <span className="text-[10px] text-muted-foreground/50">{entries.length}</span>
-                    )}
-                    {isOpen
-                      ? <ChevronDown size={11} className="text-muted-foreground/50" />
-                      : <ChevronRight size={11} className="text-muted-foreground/50" />
-                    }
-                  </button>
-
-                  {isOpen && entries.length > 0 && (
-                    <div className="flex flex-col gap-0.5 pb-1 px-3">
-                      {entries.map((entry) => (
-                        <button
-                          key={entry.id}
-                          onClick={() => setSelected(entry)}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/60 transition-colors text-left w-full group"
-                        >
-                          <span className={`w-1 h-1 rounded-full shrink-0 ${dot} opacity-70`} />
-                          <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors truncate">
-                            {entry.name}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+            return (
+              <div key={key} className="mb-1">
+                <button
+                  onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+                  className="w-full flex items-center gap-2 px-4 py-1.5 hover:bg-muted/50 transition-colors group"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
+                  <span className="flex-1 text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                    {label}
+                  </span>
+                  {entries.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground/50">{entries.length}</span>
                   )}
+                  {isOpen
+                    ? <ChevronDown size={11} className="text-muted-foreground/50" />
+                    : <ChevronRight size={11} className="text-muted-foreground/50" />
+                  }
+                </button>
 
-                  <div className="mx-4 border-t border-border/50" />
-                </div>
-              )
-            })
+                {isOpen && entries.length > 0 && (
+                  <div className="flex flex-col gap-0.5 pb-1 px-3">
+                    {entries.map((entry) => (
+                      <button
+                        key={entry.id}
+                        onClick={() => setSelected(entry)}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/60 transition-colors text-left w-full group"
+                      >
+                        <span className={`w-1 h-1 rounded-full shrink-0 ${dot} opacity-70`} />
+                        <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors truncate">
+                          {entry.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {isOpen && entries.length === 0 && (
+                  <p className="px-5 pb-2 text-[11px] text-muted-foreground/50 italic">
+                    None yet
+                  </p>
+                )}
+
+                <div className="mx-4 border-t border-border/50" />
+              </div>
+            )
+          })}
+
+          {/* Hidden optional sections — "Add" buttons */}
+          {hiddenOptional.length > 0 && (
+            <div className="px-4 pt-3 pb-1 flex flex-col gap-1">
+              <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-1">
+                Add sections
+              </p>
+              {hiddenOptional.map(({ key, label, dot }) => (
+                <button
+                  key={key}
+                  onClick={() => setUnlocked((u) => new Set([...u, key]))}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md text-left w-full hover:bg-muted/50 transition-colors group"
+                >
+                  <Plus size={10} className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot} opacity-40 group-hover:opacity-70 transition-opacity`} />
+                  <span className="text-[11px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
