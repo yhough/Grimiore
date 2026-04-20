@@ -394,3 +394,139 @@ export const mockProcessingSteps = [
     status: "pending" as const,
   },
 ];
+
+// -- Mock Timeline Events ----------
+export const mockTimelineEvents = [
+  {
+    id: "tl-1",
+    title: "The War of 412 — Ashwall Gate Destroyed",
+    description:
+      "Imperial forces clash with the northern clans at the border crossing. The Ashwall Gate is destroyed in the siege and never rebuilt. The ruins become the northernmost point of imperial territory.",
+    source: "world_chat",
+    inStoryDate: "Year 412, Third Age",
+    category: "historical",
+    characters: [],
+    createdAt: new Date("2024-01-15T09:00:00"),
+  },
+  {
+    id: "tl-2",
+    title: "The Magic Begins to Fade",
+    description:
+      "Approximately thirty years before the story's present, magic begins weakening across the empire. Spells fail mid-cast, scholars go mad, magical artifacts go dark. The cause is unknown publicly — the Threadweavers know the truth.",
+    source: "world_chat",
+    inStoryDate: "Approximately 30 years before present",
+    category: "historical",
+    characters: [],
+    createdAt: new Date("2024-01-15T09:02:00"),
+  },
+  {
+    id: "tl-3",
+    title: "Kael Drovyn Stripped of His Rank",
+    description:
+      "General Kael Drovyn is discharged from imperial service on a manufactured charge of insubordination. The real reason is never stated publicly. Kael believes his disgrace was engineered — he is right.",
+    source: "world_chat",
+    inStoryDate: "6 months before present",
+    category: "political",
+    characters: ["Kael Drovyn"],
+    createdAt: new Date("2024-01-15T09:04:00"),
+  },
+  {
+    id: "tl-4",
+    title: "The Threadweavers Embedded in the Throne",
+    description:
+      "At an unknown point in recent history, the Threadweavers cease being an external force and become structurally embedded in the imperial court. Queen Seraphel is their primary contact — whether she controls them or they control her is unclear.",
+    source: "world_chat",
+    inStoryDate: "Exact date unknown",
+    category: "political",
+    characters: ["Queen Seraphel"],
+    createdAt: new Date("2024-01-15T09:06:00"),
+  },
+  {
+    id: "tl-5",
+    title: "Kael Intercepts the Courier",
+    description:
+      "On a mountain road three days east of Valdris, Kael intercepts a Threadweaver courier carrying a sealed letter bearing the queen's private cipher. The confrontation is brief and brutal. The courier does not survive.",
+    source: "chapter_1",
+    inStoryDate: "3 months before present",
+    category: "conflict",
+    characters: ["Kael Drovyn", "The Courier"],
+    createdAt: new Date("2024-01-15T09:08:00"),
+  },
+  {
+    id: "tl-6",
+    title: "Eastern Garrison Doubled",
+    description:
+      "Queen Seraphel orders the eastern garrison doubled without explanation to the provincial lords. Lord Therin Mast notices. He begins stockpiling grain — officially for winter.",
+    source: "world_chat",
+    inStoryDate: "2 months before present",
+    category: "political",
+    characters: ["Queen Seraphel", "Lord Therin Mast"],
+    createdAt: new Date("2024-01-15T09:10:00"),
+  },
+  {
+    id: "tl-7",
+    title: "Mira Goes Silent",
+    description:
+      "Kael's former intelligence contact Mira stops responding to any communication the same week the garrison is doubled. She was last seen entering the Scholar's Quarter in Valdris. Her current status is unknown.",
+    source: "world_chat",
+    inStoryDate: "2 months before present",
+    category: "mystery",
+    characters: ["Mira"],
+    createdAt: new Date("2024-01-15T09:11:00"),
+  },
+  {
+    id: "tl-8",
+    title: "Three Threadweaver Assassination Attempts",
+    description:
+      "Over the course of a month, Kael survives three separate Threadweaver assassination attempts while moving east. He does not sleep in the same place twice. He tells no one.",
+    source: "world_chat",
+    inStoryDate: "2–1 months before present",
+    category: "conflict",
+    characters: ["Kael Drovyn"],
+    createdAt: new Date("2024-01-15T09:13:00"),
+  },
+  {
+    id: "tl-9",
+    title: "Seraphel Meets with Guildmaster Voss",
+    description:
+      "A formal imperial audience between Queen Seraphel and Guildmaster Renara Voss. Publicly a routine trade discussion. Seraphel receives word of the courier's disappearance mid-audience and does not react visibly. Voss notices something is wrong.",
+    source: "chapter_2",
+    inStoryDate: "6 weeks before present",
+    category: "political",
+    characters: ["Queen Seraphel", "Guildmaster Renara Voss"],
+    createdAt: new Date("2024-01-15T09:15:00"),
+  },
+  {
+    id: "tl-10",
+    title: "The Queen Issues the Order",
+    description:
+      "Privately, after the audience with Voss, Seraphel issues the order to locate Kael — not through usual channels, but directly through the Threadweavers. This is unusual enough that it suggests personal stakes.",
+    source: "chapter_2",
+    inStoryDate: "6 weeks before present",
+    category: "political",
+    characters: ["Queen Seraphel"],
+    createdAt: new Date("2024-01-15T09:16:00"),
+  },
+  {
+    id: "tl-11",
+    title: "Kael Arrives at Therin's Estate",
+    description:
+      "Exhausted and injured, Kael arrives at Lord Therin Mast's estate in the eastern provinces. Therin takes him in without asking questions. By the end of the evening Kael has decided he needs to reach the Scholar's Quarter in Valdris.",
+    source: "chapter_3",
+    inStoryDate: "Present — Day 1",
+    category: "story",
+    characters: ["Kael Drovyn", "Lord Therin Mast"],
+    createdAt: new Date("2024-01-15T09:18:00"),
+  },
+  {
+    id: "tl-12",
+    title: "Northern Trade Routes Disrupted",
+    description:
+      "Early winter storms disrupt the Merchant's Consortium's primary northern shipping lanes. Guildmaster Voss quietly reroutes three ships — destination logged as routine, actual cargo unknown. The Consortium's economic vulnerability increases.",
+    source: "world_chat",
+    inStoryDate: "Present — ongoing",
+    category: "economic",
+    characters: ["Guildmaster Renara Voss"],
+    createdAt: new Date("2024-01-15T09:20:00"),
+  },
+];
