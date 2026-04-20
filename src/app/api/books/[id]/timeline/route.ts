@@ -7,8 +7,13 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   const events = db
     .prepare(
-      `SELECT id, title, description, category, characters, source, source_id, in_story_date, sort_order, created_at
-       FROM timeline_events WHERE book_id = ? AND (is_correction IS NULL OR is_correction = 0) ORDER BY sort_order ASC, created_at ASC`
+      `SELECT te.id, te.title, te.description, te.category, te.characters,
+              te.source, te.source_id, te.in_story_date, te.sort_order, te.created_at,
+              c.number AS chapter_number
+       FROM timeline_events te
+       LEFT JOIN chapters c ON te.source = 'chapter' AND te.source_id = c.id
+       WHERE te.book_id = ? AND (te.is_correction IS NULL OR te.is_correction = 0)
+       ORDER BY te.sort_order ASC, te.created_at ASC`
     )
     .all(params.id)
 

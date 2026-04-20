@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
-import { Playfair_Display } from 'next/font/google'
+import { Lora } from 'next/font/google'
 import { Toaster } from 'sonner'
 import './globals.css'
 
-const playfair = Playfair_Display({
+const lora = Lora({
   subsets: ['latin'],
   style: ['italic'],
   variable: '--font-playfair',
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} ${playfair.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
+        className={`${GeistSans.variable} ${GeistMono.variable} ${lora.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
       >
         {children}
         <Toaster

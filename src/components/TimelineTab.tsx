@@ -10,6 +10,7 @@ interface TimelineEvent {
   title: string
   description: string
   source: string
+  chapterNumber: number | null
   inStoryDate: string | null
   category: string
   characters: string[]
@@ -38,21 +39,24 @@ function categoryStyle(cat: string) {
   }
 }
 
-function formatSource(source: string): string {
-  if (source === 'world_chat' || source === 'chat') return 'World'
-  const m = source.match(/chapter[_\s]?(\d+)/i)
+function formatSource(event: TimelineEvent): string {
+  if (event.chapterNumber != null) return `Ch. ${event.chapterNumber}`
+  if (event.source === 'world_chat' || event.source === 'chat') return 'World'
+  const m = event.source.match(/chapter[_\s]?(\d+)/i)
   if (m) return `Ch. ${m[1]}`
-  return source
+  return event.source
 }
 
 // ── Normalise mock → unified shape ────────────────────────────────────────────
 
 function normaliseMock(e: (typeof mockTimelineEvents)[0], i: number): TimelineEvent {
+  const m = e.source.match(/chapter[_\s]?(\d+)/i)
   return {
     id: e.id,
     title: e.title,
     description: e.description,
     source: e.source,
+    chapterNumber: m ? Number(m[1]) : null,
     inStoryDate: e.inStoryDate ?? null,
     category: e.category,
     characters: e.characters,
@@ -67,6 +71,7 @@ function normaliseApi(e: Record<string, unknown>, i: number): TimelineEvent {
     title: String(e.title ?? ''),
     description: String(e.description ?? ''),
     source: String(e.source ?? 'chat'),
+    chapterNumber: e.chapter_number != null ? Number(e.chapter_number) : null,
     inStoryDate: e.in_story_date ? String(e.in_story_date) : null,
     category: String(e.category ?? 'history'),
     characters: (() => { try { return JSON.parse(String(e.characters ?? '[]')) } catch { return [] } })(),
@@ -92,8 +97,6 @@ function categoryDot(cat: string) {
   return CATEGORY_DOT[cat.toLowerCase()] ?? 'bg-zinc-400'
 }
 
-// side: which side of the center line this card is on.
-// The accent border always faces the center line.
 function EventCard({ event, side }: { event: TimelineEvent; side: 'left' | 'right' }) {
   const cs = categoryStyle(event.category)
   const borderClass = side === 'left'
@@ -115,7 +118,7 @@ function EventCard({ event, side }: { event: TimelineEvent; side: 'left' | 'righ
           </span>
         </div>
         <span className="text-[11px] text-muted-foreground/60 shrink-0 mt-0.5">
-          {formatSource(event.source)}
+          {formatSource(event)}
         </span>
       </div>
 
@@ -189,6 +192,7 @@ export function TimelineTab({ bookId, refreshKey }: Props) {
   )
   const [character, setCharacter] = useState('all')
   const [category, setCategory]   = useState('all')
+  const [chapterFilter, setChapterFilter] = useState('all')
   const [sort, setSort]           = useState<'story' | 'added'>('story')
 
   useEffect(() => {
@@ -212,19 +216,30 @@ export function TimelineTab({ bookId, refreshKey }: Props) {
     return Array.from(set).sort()
   }, [events])
 
+  // All chapter numbers that have events, sorted ascending
+  const allChapters = useMemo(() => {
+    const set = new Set<number>()
+    events.forEach((e) => { if (e.chapterNumber != null) set.add(e.chapterNumber) })
+    return Array.from(set).sort((a, b) => a - b)
+  }, [events])
+
   // Filtering + sorting
   const displayed = useMemo(() => {
     let out = events.filter((e) => {
       if (character !== 'all' && !e.characters.includes(character)) return false
       if (category !== 'all' && e.category !== category) return false
+      if (chapterFilter === 'world') {
+        if (e.chapterNumber != null) return false
+      } else if (chapterFilter !== 'all') {
+        if (e.chapterNumber !== Number(chapterFilter)) return false
+      }
       return true
     })
     if (sort === 'added') {
       out = [...out].sort((a, b) => a.createdAt - b.createdAt)
     }
-    // story order: keep original array order (sort_order asc)
     return out
-  }, [events, character, category, sort])
+  }, [events, character, category, chapterFilter, sort])
 
   // ── Empty state ─────────────────────────────────────────────────────────────
   if (events.length === 0) {
@@ -272,6 +287,14 @@ export function TimelineTab({ bookId, refreshKey }: Props) {
               <option key={c} value={c} className="capitalize">
                 {categoryStyle(c).label}
               </option>
+            ))}
+          </FilterSelect>
+
+          <FilterSelect value={chapterFilter} onChange={setChapterFilter}>
+            <option value="all">All sources</option>
+            <option value="world">World chat</option>
+            {allChapters.map((n) => (
+              <option key={n} value={String(n)}>Chapter {n}</option>
             ))}
           </FilterSelect>
 
