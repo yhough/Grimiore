@@ -2,11 +2,13 @@
 
 import { CharacterCard } from '@/components/CharacterCard'
 import { CharacterDetailSlideOver, type CharacterFull } from '@/components/CharacterDetailSlideOver'
+import { ChapterList } from '@/components/ChaptersTab/ChapterList'
+import { ProcessingPipeline } from '@/components/ChaptersTab/ProcessingPipeline'
 import { LoreSidebar, type LoreSidebarHandle } from '@/components/LoreSidebar'
 import { TypingIndicator } from '@/components/TypingIndicator'
 import { WorldMessage, type WorldMessageData } from '@/components/WorldMessage'
-import { mockBook, mockCharacters, mockLoreSections, mockMessages, MOCK_BOOK_ID } from '@/lib/mock-data'
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
+import { mockBook, mockChapters, mockCharacters, mockLoreSections, mockMessages, mockProcessingSteps, MOCK_BOOK_ID } from '@/lib/mock-data'
+import { AlertTriangle, BookOpen, CheckCircle, ChevronLeft, ChevronRight, Sparkles, Upload, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
@@ -280,10 +282,360 @@ function CharactersTab({ bookId }: { bookId: string }) {
   )
 }
 
-function ChaptersTab({ bookId }: { bookId: string }) {
+function ChaptersTab({ bookId: _bookId }: { bookId: string }) {
+  const [uploadMode, setUploadMode] = useState<'paste' | 'file'>('paste')
+  const [expandedChapterId, setExpandedChapterId] = useState<string | null>('chapter-3')
+  const [pasteText, setPasteText] = useState('')
+  const [chapterTitle, setChapterTitle] = useState('')
+  const [chapterNumber, setChapterNumber] = useState('')
+  const [sortBy, setSortBy] = useState<'order' | 'recent'>('order')
+
+  const uploadRef = useRef<HTMLDivElement>(null)
+  const pasteTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  function scrollToUpload() {
+    uploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setTimeout(() => pasteTextareaRef.current?.focus(), 300)
+  }
+
+  const sortedChapters = [...mockChapters].sort((a, b) => {
+    if (sortBy === 'recent') return b.createdAt.getTime() - a.createdAt.getTime()
+    return a.number - b.number
+  })
+
+  const processedChapters = mockChapters.filter((c) => c.processed)
+  const totalWords = processedChapters.reduce((sum, c) => sum + c.wordCount, 0)
+  const totalFlags = mockChapters.reduce((sum, c) => sum + c.flags.length, 0)
+  const hasErrors = mockChapters.some((c) => c.flags.some((f) => f.severity === 'error'))
+  const hasWarnings = mockChapters.some((c) => c.flags.some((f) => f.severity === 'warning'))
+
+  const flagIconColor = hasErrors
+    ? 'hsl(var(--grimm-danger))'
+    : hasWarnings
+    ? 'hsl(var(--grimm-accent))'
+    : 'hsl(var(--grimm-muted))'
+
+  const inputStyle: React.CSSProperties = {
+    backgroundColor: 'hsl(var(--grimm-surface))',
+    border: '0.5px solid hsl(var(--grimm-border))',
+    color: 'hsl(var(--grimm-text))',
+    padding: '6px 10px',
+    borderRadius: 6,
+    fontSize: 13,
+    outline: 'none',
+  }
+
   return (
-    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-      Chapters tab coming soon. Book ID: {bookId}
+    <div className="h-full overflow-y-auto">
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 24px' }}>
+
+        {/* ── Tab header row ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h1
+              style={{
+                fontFamily: 'var(--font-playfair)',
+                fontSize: 24,
+                color: 'hsl(var(--grimm-text))',
+                margin: 0,
+                lineHeight: 1.2,
+              }}
+            >
+              Chapters
+            </h1>
+            <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 13, marginTop: 4 }}>
+              {totalWords.toLocaleString('en-US')} words across {processedChapters.length} chapters
+            </p>
+          </div>
+          <button
+            onClick={scrollToUpload}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: 'hsl(var(--grimm-accent))',
+              color: '#1a0e00',
+              padding: '8px 18px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <Upload size={14} />
+            Upload chapter
+          </button>
+        </div>
+
+        {/* ── Stats bar ── */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+          {/* Total words */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: 'hsl(var(--grimm-surface))',
+              border: '0.5px solid hsl(var(--grimm-border))',
+              borderRadius: 20,
+              padding: '6px 14px',
+            }}
+          >
+            <BookOpen size={14} style={{ color: 'hsl(var(--grimm-muted))' }} />
+            <span style={{ color: 'hsl(var(--grimm-text))', fontSize: 13, fontWeight: 500 }}>
+              {totalWords.toLocaleString('en-US')}
+            </span>
+            <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>total words</span>
+          </div>
+
+          {/* Chapters processed */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: 'hsl(var(--grimm-surface))',
+              border: '0.5px solid hsl(var(--grimm-border))',
+              borderRadius: 20,
+              padding: '6px 14px',
+            }}
+          >
+            <CheckCircle size={14} style={{ color: 'hsl(var(--grimm-muted))' }} />
+            <span style={{ color: 'hsl(var(--grimm-text))', fontSize: 13, fontWeight: 500 }}>
+              {processedChapters.length}
+            </span>
+            <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>chapters processed</span>
+          </div>
+
+          {/* Flags */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: 'hsl(var(--grimm-surface))',
+              border: '0.5px solid hsl(var(--grimm-border))',
+              borderRadius: 20,
+              padding: '6px 14px',
+            }}
+          >
+            <AlertTriangle size={14} style={{ color: flagIconColor }} />
+            <span style={{ color: flagIconColor, fontSize: 13, fontWeight: 500 }}>{totalFlags}</span>
+            <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>
+              {totalFlags === 1 ? 'flag' : 'flags'} to review
+            </span>
+          </div>
+        </div>
+
+        {/* ── Upload area ── */}
+        <div
+          ref={uploadRef}
+          style={{
+            backgroundColor: 'hsl(var(--grimm-surface))',
+            border: '0.5px solid hsl(var(--grimm-border))',
+            borderRadius: 12,
+            padding: 24,
+            marginBottom: 24,
+          }}
+        >
+          {/* Tab switcher */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+            {(['paste', 'file'] as const).map((mode) => {
+              const isActive = uploadMode === mode
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setUploadMode(mode)}
+                  style={{
+                    padding: '5px 14px',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    border: isActive
+                      ? '0.5px solid hsl(var(--grimm-accent))'
+                      : '0.5px solid hsl(var(--grimm-border))',
+                    backgroundColor: isActive
+                      ? 'hsl(var(--grimm-accent) / 0.12)'
+                      : 'hsl(var(--grimm-surface-raised))',
+                    color: isActive ? 'hsl(var(--grimm-accent))' : 'hsl(var(--grimm-muted))',
+                    transition: 'all 100ms ease',
+                  }}
+                >
+                  {mode === 'paste' ? 'Paste text' : 'Upload file'}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Chapter number + title row */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12, whiteSpace: 'nowrap' }}>
+                Chapter
+              </label>
+              <input
+                type="number"
+                value={chapterNumber}
+                onChange={(e) => setChapterNumber(e.target.value)}
+                placeholder="1"
+                style={{ ...inputStyle, width: 64 }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+              <label style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12, whiteSpace: 'nowrap' }}>
+                Title
+              </label>
+              <input
+                type="text"
+                value={chapterTitle}
+                onChange={(e) => setChapterTitle(e.target.value)}
+                placeholder="Chapter title..."
+                style={{ ...inputStyle, flex: 1 }}
+              />
+            </div>
+          </div>
+
+          {uploadMode === 'paste' ? (
+            <>
+              <textarea
+                ref={pasteTextareaRef}
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder="Paste your chapter text here..."
+                style={{
+                  ...inputStyle,
+                  width: '100%',
+                  minHeight: 140,
+                  resize: 'vertical',
+                  fontSize: 14,
+                  padding: 14,
+                  lineHeight: 1.6,
+                  boxSizing: 'border-box',
+                  display: 'block',
+                }}
+              />
+              <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12, textAlign: 'right', marginTop: 4 }}>
+                {pasteText.length.toLocaleString('en-US')} characters
+              </p>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: 16,
+                }}
+              >
+                <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>
+                  Processing takes about 15–30 seconds
+                </span>
+                <button
+                  onClick={() => console.log('Analyze chapter')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: 'hsl(var(--grimm-accent))',
+                    color: '#1a0e00',
+                    padding: '8px 20px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Zap size={13} />
+                  Analyze chapter
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <DropZone />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: 16,
+                }}
+              >
+                <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>
+                  Processing takes about 15–30 seconds
+                </span>
+                <button
+                  onClick={() => console.log('Analyze chapter')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    backgroundColor: 'hsl(var(--grimm-accent))',
+                    color: '#1a0e00',
+                    padding: '8px 20px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Zap size={13} />
+                  Analyze chapter
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Processing pipeline ── */}
+        <ProcessingPipeline steps={mockProcessingSteps} chapterTitle="Eastern Hospitality" />
+
+        {/* ── Chapter list ── */}
+        <ChapterList
+          chapters={sortedChapters}
+          expandedChapterId={expandedChapterId}
+          onToggleChapter={(id) =>
+            setExpandedChapterId((prev) => (prev === id ? null : id))
+          }
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+        />
+      </div>
+    </div>
+  )
+}
+
+function DropZone() {
+  const [hovering, setHovering] = useState(false)
+
+  return (
+    <div
+      onClick={() => console.log('Browse file')}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      style={{
+        border: `1px dashed ${hovering ? 'hsl(var(--grimm-accent) / 0.5)' : 'hsl(var(--grimm-border))'}`,
+        borderRadius: 10,
+        backgroundColor: hovering ? 'hsl(var(--grimm-surface-raised) / 0.8)' : 'hsl(var(--grimm-surface-raised))',
+        padding: '40px 24px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        transition: 'border-color 150ms ease, background-color 150ms ease',
+      }}
+    >
+      <Upload size={32} style={{ color: 'hsl(var(--grimm-muted))', margin: '0 auto' }} />
+      <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 14, marginTop: 12 }}>
+        Drop your .txt or .docx file here
+      </p>
+      <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 13, marginTop: 4 }}>
+        or click to browse
+      </p>
+      <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11, marginTop: 8 }}>
+        Supports .txt and .docx
+      </p>
     </div>
   )
 }

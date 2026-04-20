@@ -291,3 +291,106 @@ export const mockMessages: WorldMessageData[] = [
     ripple_cards: [],
   },
 ]
+// Mock Chapters
+export const mockChapters = [
+  {
+    id: "chapter-1",
+    number: 1,
+    title: "The Courier's Last Mile",
+    wordCount: 4821,
+    summary:
+      "Kael intercepts a Threadweaver courier on a mountain road three days east of Valdris. The confrontation is brief and brutal. What he finds in the courier's satchel — a sealed letter bearing the queen's private cipher — changes everything he thought he understood about his own disgrace. He rides east with no clear plan except distance.",
+    processed: true,
+    createdAt: new Date("2024-01-10T14:00:00"),
+    flags: [
+      {
+        id: "flag-1",
+        severity: "warning",
+        description:
+          "Kael is described as carrying his general's insignia in this chapter, but his rank was stripped before the story begins. This may be intentional — a character detail worth clarifying.",
+      },
+    ],
+    charactersAppearing: ["Kael Drovyn", "The Courier"],
+  },
+  {
+    id: "chapter-2",
+    number: 2,
+    title: "The Weight of the Throne",
+    wordCount: 5103,
+    summary:
+      "Queen Seraphel receives word of the courier's disappearance during a formal audience with Guildmaster Renara Voss. She does not react visibly. The chapter intercuts between the public performance of imperial stability and a private meeting afterward where Seraphel issues the order to locate Kael — not through the usual channels, but directly through the Threadweavers. Voss, watching from across the room, notices something is wrong.",
+    processed: true,
+    createdAt: new Date("2024-01-12T10:00:00"),
+    flags: [],
+    charactersAppearing: ["Queen Seraphel", "Guildmaster Renara Voss"],
+  },
+  {
+    id: "chapter-3",
+    number: 3,
+    title: "Eastern Hospitality",
+    wordCount: 3967,
+    summary:
+      "Kael arrives at Lord Therin Mast's estate in the eastern provinces, exhausted and injured. Therin takes him in without asking questions — which Kael understands is its own kind of question. The chapter is quiet: a meal, a fire, two men who've known each other a long time not saying the important things. By the end Kael has decided he needs to reach Valdris, specifically the Scholar's Quarter. He doesn't tell Therin why.",
+    processed: true,
+    createdAt: new Date("2024-01-14T16:00:00"),
+    flags: [
+      {
+        id: "flag-2",
+        severity: "error",
+        description:
+          "Chapter 3 describes Kael arriving on horseback, but Chapter 1 established he released his horse after the courier confrontation to avoid being tracked. This is a direct continuity error.",
+      },
+      {
+        id: "flag-3",
+        severity: "warning",
+        description:
+          "Therin's estate is described as being in 'the northern reaches of the eastern provinces' — this places it very close to the Ashwall Gate ruins. Worth confirming this is intentional given the Gate's significance.",
+      },
+    ],
+    charactersAppearing: ["Kael Drovyn", "Lord Therin Mast"],
+  },
+  {
+    id: "chapter-4",
+    number: 4,
+    title: "What the Scholars Keep",
+    wordCount: 0,
+    summary: null,
+    processed: false,
+    createdAt: new Date("2024-01-18T09:00:00"),
+    flags: [],
+    charactersAppearing: [],
+  },
+];
+
+export const mockProcessingSteps = [
+  {
+    id: "step-1",
+    label: "Summarizing chapter",
+    description: "Reading and distilling what happened",
+    status: "complete" as const,
+  },
+  {
+    id: "step-2",
+    label: "Extracting characters",
+    description: "Finding who appears and what we learn about them",
+    status: "complete" as const,
+  },
+  {
+    id: "step-3",
+    label: "Extracting world facts",
+    description: "Logging new locations, lore, and events",
+    status: "complete" as const,
+  },
+  {
+    id: "step-4",
+    label: "Checking continuity",
+    description: "Comparing against established canon",
+    status: "active" as const,
+  },
+  {
+    id: "step-5",
+    label: "Updating character arcs",
+    description: "Reflecting what changed for each character",
+    status: "pending" as const,
+  },
+];

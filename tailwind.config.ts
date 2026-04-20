@@ -43,6 +43,15 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        'grimm-text': 'hsl(var(--grimm-text))',
+        'grimm-muted': 'hsl(var(--grimm-muted))',
+        'grimm-surface': 'hsl(var(--grimm-surface))',
+        'grimm-surface-raised': 'hsl(var(--grimm-surface-raised))',
+        'grimm-border': 'hsl(var(--grimm-border))',
+        'grimm-accent': 'hsl(var(--grimm-accent))',
+        'grimm-success': 'hsl(var(--grimm-success))',
+        'grimm-success-text': 'hsl(var(--grimm-success-text))',
+        'grimm-danger': 'hsl(var(--grimm-danger))',
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -52,6 +61,7 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-geist-sans)'],
         mono: ['var(--font-geist-mono)'],
+        playfair: ['var(--font-playfair)', 'serif'],
       },
     },
   },
