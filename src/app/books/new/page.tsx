@@ -12,16 +12,16 @@ type CharRow = { _key: string; name: string; role: string; description: string }
 type WorldRow = { _key: string; name: string; type: string; summary: string }
 
 const CHARACTER_ROLES = ['protagonist', 'antagonist', 'supporting', 'minor'] as const
-const WORLD_TYPES = [
+const SETTING_TYPES = [
   { value: 'location', label: 'Location' },
-  { value: 'faction', label: 'Faction' },
-  { value: 'world_fact', label: 'World Fact' },
+  { value: 'faction', label: 'Group / Faction' },
+  { value: 'world_fact', label: 'Established Fact' },
   { value: 'misc', label: 'Misc' },
 ] as const
 
 // ── Step indicator ─────────────────────────────────────────────────────────────
 
-const STEPS = ['The Story', 'Characters', 'The World'] as const
+const STEPS = ['The Story', 'Characters', 'The Setting'] as const
 
 function StepBar({ current }: { current: number }) {
   return (
@@ -345,20 +345,20 @@ export default function NewBookPage() {
                   onClick={advance}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
-                  Next: The World
+                  Next: The Setting
                   <ArrowRight size={14} />
                 </button>
               </div>
             </div>
           )}
 
-          {/* ── Step 3: The World ── */}
+          {/* ── Step 3: The Setting ── */}
           {step === 3 && (
             <div className="flex flex-col gap-5">
               <div>
-                <h2 className="text-base font-semibold">The World</h2>
+                <h2 className="text-base font-semibold">The Setting</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Add locations, factions, world facts, or any lore that shapes this story.
+                  Add places, groups, or any established facts that ground your story.
                 </p>
               </div>
 
@@ -368,7 +368,7 @@ export default function NewBookPage() {
                     <BookOpen size={16} className="text-muted-foreground" />
                   </div>
                   <p className="text-sm text-muted-foreground max-w-xs">
-                    No world entries yet. Add places, factions, rules of magic, or any established facts.
+                    No entries yet. Add a city, an organisation, a rule of your world, or anything else that matters.
                   </p>
                 </div>
               ) : (
@@ -400,7 +400,7 @@ export default function NewBookPage() {
                             onChange={(e) => updateWorld(entry._key, 'type', e.target.value)}
                             className={`${selectCls} w-full`}
                           >
-                            {WORLD_TYPES.map((t) => (
+                            {SETTING_TYPES.map((t) => (
                               <option key={t.value} value={t.value}>{t.label}</option>
                             ))}
                           </select>
@@ -419,7 +419,7 @@ export default function NewBookPage() {
                         <textarea
                           value={entry.summary}
                           onChange={(e) => updateWorld(entry._key, 'summary', e.target.value)}
-                          placeholder="What is this? What makes it significant to the story?"
+                          placeholder="What is this? Why does it matter to the story?"
                           rows={2}
                           className={`${inputCls} resize-none`}
                         />
@@ -434,7 +434,7 @@ export default function NewBookPage() {
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-md border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-muted/50 transition-colors"
               >
                 <Plus size={14} />
-                Add entry
+                Add setting entry
               </button>
 
               {error && <p className="text-sm text-destructive">{error}</p>}

@@ -282,9 +282,10 @@ function CharactersTab({ bookId }: { bookId: string }) {
   )
 }
 
-function ChaptersTab({ bookId: _bookId }: { bookId: string }) {
+function ChaptersTab({ bookId }: { bookId: string }) {
+  const isMock = bookId === MOCK_BOOK_ID
   const [uploadMode, setUploadMode] = useState<'paste' | 'file'>('paste')
-  const [expandedChapterId, setExpandedChapterId] = useState<string | null>('chapter-3')
+  const [expandedChapterId, setExpandedChapterId] = useState<string | null>(isMock ? 'chapter-3' : null)
   const [pasteText, setPasteText] = useState('')
   const [chapterTitle, setChapterTitle] = useState('')
   const [chapterNumber, setChapterNumber] = useState('')
@@ -298,16 +299,18 @@ function ChaptersTab({ bookId: _bookId }: { bookId: string }) {
     setTimeout(() => pasteTextareaRef.current?.focus(), 300)
   }
 
-  const sortedChapters = [...mockChapters].sort((a, b) => {
+  const chapters = isMock ? mockChapters : []
+
+  const sortedChapters = [...chapters].sort((a, b) => {
     if (sortBy === 'recent') return b.createdAt.getTime() - a.createdAt.getTime()
     return a.number - b.number
   })
 
-  const processedChapters = mockChapters.filter((c) => c.processed)
+  const processedChapters = chapters.filter((c) => c.processed)
   const totalWords = processedChapters.reduce((sum, c) => sum + c.wordCount, 0)
-  const totalFlags = mockChapters.reduce((sum, c) => sum + c.flags.length, 0)
-  const hasErrors = mockChapters.some((c) => c.flags.some((f) => f.severity === 'error'))
-  const hasWarnings = mockChapters.some((c) => c.flags.some((f) => f.severity === 'warning'))
+  const totalFlags = chapters.reduce((sum, c) => sum + c.flags.length, 0)
+  const hasErrors = chapters.some((c) => c.flags.some((f) => f.severity === 'error'))
+  const hasWarnings = chapters.some((c) => c.flags.some((f) => f.severity === 'warning'))
 
   const flagIconColor = hasErrors
     ? 'hsl(var(--grimm-danger))'
@@ -590,8 +593,10 @@ function ChaptersTab({ bookId: _bookId }: { bookId: string }) {
           )}
         </div>
 
-        {/* ── Processing pipeline ── */}
-        <ProcessingPipeline steps={mockProcessingSteps} chapterTitle="Eastern Hospitality" />
+        {/* ── Processing pipeline (mock only) ── */}
+        {isMock && (
+          <ProcessingPipeline steps={mockProcessingSteps} chapterTitle="Eastern Hospitality" />
+        )}
 
         {/* ── Chapter list ── */}
         <ChapterList
