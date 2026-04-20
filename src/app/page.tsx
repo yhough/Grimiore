@@ -3,6 +3,7 @@
 import { BookCard } from '@/components/BookCard'
 import type { Book } from '@/types'
 import { BookOpen, Clock, Home, Library, Plus, Sparkles } from 'lucide-react'
+
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -37,7 +38,7 @@ export default function HomePage() {
         {/* Logo */}
         <div className="h-14 flex items-center gap-2 px-4 border-b border-border">
           <Sparkles size={15} className="text-primary" />
-          <span className="text-foreground text-xl" style={{ fontFamily: 'Lumos' }}>Grimoire</span>
+          <span className="text-foreground text-xl" style={{ fontFamily: 'Lumos' }}>Grimm</span>
         </div>
 
         {/* Nav */}
@@ -80,7 +81,7 @@ export default function HomePage() {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto h-screen">
+      <main className="flex-1 overflow-y-auto">
         {tab === 'home' && <HomeTab books={books} loading={loading} />}
         {tab === 'library' && <LibraryTab books={books} loading={loading} onDelete={handleDelete} />}
       </main>
@@ -94,73 +95,43 @@ function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
   const recent = books.slice(0, 3)
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="max-w-3xl px-8 py-12">
-        <div className="mb-10">
-          <h1 className="text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Lumos' }}>
-            Welcome back.
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Pick up where you left off, or start something new.
-          </p>
-        </div>
+    <div className="px-8 py-12">
+      <div className="mb-10">
+        <h1 className="text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Lumos' }}>
+          Welcome back.
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Pick up where you left off, or start something new.
+        </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground px-8">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : books.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center pb-32">
+        <div className="flex items-center justify-center py-24">
           <EmptyState />
         </div>
       ) : (
-        <div className="max-w-3xl px-8">
-        <section>
+        <>
           <div className="flex items-center gap-2 mb-4">
             <Clock size={13} className="text-muted-foreground" />
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Recently updated
             </h2>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {recent.map((book) => (
-              <RecentBookRow key={book.id} book={book} />
+              <BookCard key={book.id} book={book} />
             ))}
           </div>
           {books.length > 3 && (
-            <button
-              className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <p className="mt-4 text-sm text-muted-foreground">
               + {books.length - 3} more in Library
-            </button>
+            </p>
           )}
-        </section>
-        </div>
+        </>
       )}
     </div>
-  )
-}
-
-function RecentBookRow({ book }: { book: Book }) {
-  return (
-    <Link
-      href={`/books/${book.id}`}
-      className="flex items-center gap-4 p-3 rounded-lg border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-all group"
-    >
-      <div className="w-8 h-10 rounded bg-muted flex items-center justify-center shrink-0">
-        <BookOpen size={14} className="text-muted-foreground" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-          {book.title}
-        </p>
-        <p className="text-xs text-muted-foreground">{book.genre}</p>
-      </div>
-      {book.word_count > 0 && (
-        <span className="text-xs text-muted-foreground shrink-0">
-          {book.word_count.toLocaleString()} words
-        </span>
-      )}
-    </Link>
   )
 }
 
@@ -213,7 +184,7 @@ function EmptyState() {
       </div>
       <h2 className="text-base font-semibold mb-1">No books yet</h2>
       <p className="text-muted-foreground text-sm max-w-xs mb-5">
-        Start a new book and Grimoire will help you build its world, track characters, and keep everything consistent.
+        Start a new book and Grimm will help you build its world, track characters, and keep everything consistent.
       </p>
       <Link
         href="/books/new"

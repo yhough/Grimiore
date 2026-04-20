@@ -5,8 +5,8 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: {
-    default: 'Grimoire',
-    template: '%s — Grimoire',
+    default: 'Grimm',
+    template: '%s — Grimm',
   },
   description: 'AI-powered worldbuilding companion for writers, game designers, and storytellers.',
 }

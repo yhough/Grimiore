@@ -11,7 +11,14 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { title, genre, premise, protagonist_name, protagonist_description } = await req.json()
+  let body: Record<string, string>
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+
+  const { title, genre, premise, protagonist_name, protagonist_description } = body
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 })

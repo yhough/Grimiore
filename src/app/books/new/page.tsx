@@ -57,7 +57,7 @@ export default function NewBookPage() {
           <div className="mb-8">
             <h1 className="text-2xl font-semibold tracking-tight">New Book</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Tell Grimoire what you're working on and it will build your workspace from there.
+              Tell Grimm what you're working on and it will build your workspace from there.
             </p>
           </div>
 

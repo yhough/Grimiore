@@ -1,12 +1,12 @@
-# Grimoire
+# Grimm
 
-An AI-powered worldbuilding tool for writers, game designers, and storytellers. Build entire fictional worlds incrementally through natural language. Grimoire turns your narration into structured, persistent lore while reasoning across everything you've established to surface ripple effects, flag contradictions, and make proactive suggestions.
+An AI-powered worldbuilding tool for writers, game designers, and storytellers. Build entire fictional worlds incrementally through natural language. Grimm turns your narration into structured, persistent lore while reasoning across everything you've established to surface ripple effects, flag contradictions, and make proactive suggestions.
 
 ## What it does
 
 - **Chat-driven worldbuilding** — narrate events and facts in plain English; the AI extracts structured lore automatically
 - **Ripple effects** — after each entry, the AI surfaces 2–3 logical consequences grounded in your existing world state
-- **Contradiction detection** — if you contradict established lore, Grimoire flags it before logging anything and asks how to resolve it
+- **Contradiction detection** — if you contradict established lore, Grimm flags it before logging anything and asks how to resolve it
 - **Living lore panel** — a persistent sidebar organizes everything into Characters, Factions, Locations, History, and Lore & Misc
 - **Question mode** — ask anything about your world; the AI answers using only confirmed canon and labels any speculation
 - **Multiple worlds** — each world is a fully isolated knowledge base
