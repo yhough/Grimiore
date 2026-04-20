@@ -2,7 +2,7 @@
 
 import { BookCard } from '@/components/BookCard'
 import type { Book } from '@/types'
-import { BookOpen, Clock, Home, Library, Plus, Sparkles } from 'lucide-react'
+import { BookOpen, Clock, Home, Library, Plus, Settings, Sparkles } from 'lucide-react'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -77,6 +77,25 @@ export default function HomePage() {
             <Plus size={14} />
             New Book
           </Link>
+        </div>
+
+        {/* User profile */}
+        <div className="p-3 border-t border-border">
+          <div className="flex items-center gap-2.5 px-1 py-1 rounded-md group hover:bg-muted transition-colors cursor-pointer">
+            <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+              <span className="text-primary text-xs font-semibold" style={{ fontFamily: 'var(--font-geist-sans)' }}>
+                Y
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground leading-tight truncate">Yaelin</p>
+              <p className="text-xs text-muted-foreground leading-tight truncate">Free plan</p>
+            </div>
+            <Settings
+              size={13}
+              className="text-muted-foreground/50 group-hover:text-muted-foreground transition-colors shrink-0"
+            />
+          </div>
         </div>
       </aside>
 
