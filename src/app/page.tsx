@@ -1,11 +1,25 @@
 'use client'
 
 import { BookCard } from '@/components/BookCard'
+import { mockBook, MOCK_BOOK_ID } from '@/lib/mock-data'
 import type { Book } from '@/types'
 import { BookOpen, Clock, Home, Library, Plus, Settings, Sparkles } from 'lucide-react'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+
+const MOCK_BOOK_CARD: Book = {
+  id: MOCK_BOOK_ID,
+  title: mockBook.title,
+  genre: mockBook.genre,
+  premise: null,
+  protagonist_name: 'Kael Ardenvoss',
+  protagonist_description: null,
+  logline: mockBook.logline,
+  word_count: 13_891,
+  created_at: new Date('2024-01-10').getTime(),
+  updated_at: new Date('2024-01-14').getTime(),
+}
 
 type Tab = 'home' | 'library'
 
@@ -111,7 +125,8 @@ export default function HomePage() {
 // ── Home tab ──────────────────────────────────────────────────────────────────
 
 function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
-  const recent = books.slice(0, 3)
+  const recent = [MOCK_BOOK_CARD, ...books].slice(0, 4)
+  const hasUserBooks = books.length > 0
 
   return (
     <div className="px-8 py-12">
@@ -126,10 +141,6 @@ function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : books.length === 0 ? (
-        <div className="flex items-center justify-center py-24">
-          <EmptyState />
-        </div>
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">
@@ -143,7 +154,7 @@ function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
               <BookCard key={book.id} book={book} />
             ))}
           </div>
-          {books.length > 3 && (
+          {hasUserBooks && books.length > 3 && (
             <p className="mt-4 text-sm text-muted-foreground">
               + {books.length - 3} more in Library
             </p>
