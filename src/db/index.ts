@@ -137,7 +137,40 @@ function createDb(): Database.Database {
   try { sqlite.exec(`ALTER TABLE chat_messages ADD COLUMN correction_status TEXT`) } catch { /* already exists */ }
   try { sqlite.exec(`ALTER TABLE chat_messages ADD COLUMN correction_data TEXT`) } catch { /* already exists */ }
   try { sqlite.exec(`ALTER TABLE chapters ADD COLUMN correction_notes TEXT NOT NULL DEFAULT '[]'`) } catch { /* already exists */ }
+  try { sqlite.exec(`ALTER TABLE chapters ADD COLUMN characters_appearing TEXT NOT NULL DEFAULT '[]'`) } catch { /* already exists */ }
   try { sqlite.exec(`ALTER TABLE continuity_flags ADD COLUMN resolved_by TEXT`) } catch { /* already exists */ }
+
+  // Recreate continuity_flags without the restrictive severity CHECK so the
+  // chapter-analysis pipeline can store 'error' / 'warning' / 'info' directly.
+  try {
+    const hasBroadSeverity = (sqlite
+      .prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='continuity_flags'`)
+      .get() as { sql: string } | undefined)
+      ?.sql?.includes("'error'")
+    if (!hasBroadSeverity) {
+      sqlite.exec(`
+        PRAGMA foreign_keys = OFF;
+        CREATE TABLE continuity_flags_v2 (
+          id TEXT PRIMARY KEY,
+          chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+          book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+          description TEXT NOT NULL,
+          severity TEXT NOT NULL DEFAULT 'warning',
+          resolved INTEGER NOT NULL DEFAULT 0,
+          resolved_by TEXT,
+          created_at INTEGER NOT NULL
+        );
+        INSERT INTO continuity_flags_v2
+          SELECT id, chapter_id, book_id, description,
+            CASE severity WHEN 'hard' THEN 'error' WHEN 'soft' THEN 'warning' ELSE severity END,
+            resolved, resolved_by, created_at
+          FROM continuity_flags;
+        DROP TABLE continuity_flags;
+        ALTER TABLE continuity_flags_v2 RENAME TO continuity_flags;
+        PRAGMA foreign_keys = ON;
+      `)
+    }
+  } catch { /* already migrated */ }
 
   return sqlite
 }

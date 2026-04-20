@@ -27,7 +27,7 @@ export async function generateBookOpening(params: {
     .join('\n')
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-haiku-4-5',
     max_tokens: 512,
     messages: [
       {

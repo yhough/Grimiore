@@ -395,6 +395,26 @@ function CharactersTab({ bookId }: { bookId: string }) {
   )
 }
 
+type RealChapter = (typeof mockChapters)[0]
+
+function chaptersFromApi(raw: unknown[]): RealChapter[] {
+  return raw.map((c) => {
+    const ch = c as Record<string, unknown>
+    return {
+      id: ch.id as string,
+      number: ch.number as number,
+      title: ch.title as string,
+      wordCount: ch.wordCount as number,
+      summary: (ch.summary as string | null) ?? null,
+      processed: ch.processed as boolean,
+      createdAt: new Date(ch.createdAt as string | number),
+      flags: (ch.flags as RealChapter['flags']) ?? [],
+      charactersAppearing: (ch.charactersAppearing as string[]) ?? [],
+      correctionNotes: (ch.correctionNotes as RealChapter['correctionNotes']) ?? [],
+    }
+  })
+}
+
 function ChaptersTab({
   bookId,
   onResolveViaChat,
@@ -409,16 +429,63 @@ function ChaptersTab({
   const [chapterTitle, setChapterTitle] = useState('')
   const [chapterNumber, setChapterNumber] = useState('')
   const [sortBy, setSortBy] = useState<'order' | 'recent'>('order')
+  const [chapters, setChapters] = useState<RealChapter[]>(isMock ? mockChapters : [])
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
 
   const uploadRef = useRef<HTMLDivElement>(null)
   const pasteTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (isMock) return
+    fetch(`/api/books/${bookId}/chapters`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: unknown[]) => setChapters(chaptersFromApi(data)))
+      .catch(() => {})
+  }, [bookId, isMock])
 
   function scrollToUpload() {
     uploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setTimeout(() => pasteTextareaRef.current?.focus(), 300)
   }
 
-  const chapters = isMock ? mockChapters : []
+  async function handleAnalyzeChapter() {
+    const text = pasteText.trim()
+    if (!text) { setAnalyzeError('Paste your chapter text first.'); return }
+    if (!chapterTitle.trim()) { setAnalyzeError('Enter a chapter title.'); return }
+    const num = parseInt(chapterNumber, 10)
+    if (!num || num < 1) { setAnalyzeError('Enter a valid chapter number.'); return }
+
+    setAnalyzeError(null)
+    setIsAnalyzing(true)
+
+    try {
+      const res = await fetch(`/api/books/${bookId}/chapters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: chapterTitle.trim(), number: num, content: text }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`)
+
+      const processed = chaptersFromApi([data])[0]
+      setChapters((prev) => {
+        const without = prev.filter((c) => c.id !== processed.id && c.number !== processed.number)
+        return [...without, processed].sort((a, b) => a.number - b.number)
+      })
+      setPasteText('')
+      setChapterTitle('')
+      setChapterNumber('')
+      setExpandedChapterId(processed.id)
+      toast.success(`Chapter ${num} analyzed — ${processed.flags.length} flag${processed.flags.length === 1 ? '' : 's'} found`, { duration: 4000 })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      setAnalyzeError(msg)
+      toast.error(msg, { duration: 5000 })
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
 
   const sortedChapters = [...chapters].sort((a, b) => {
     if (sortBy === 'recent') return b.createdAt.getTime() - a.createdAt.getTime()
@@ -642,6 +709,11 @@ function ChaptersTab({
                 {pasteText.length.toLocaleString('en-US')} characters
               </p>
 
+              {analyzeError && !isMock && (
+                <p style={{ color: 'hsl(var(--grimm-danger))', fontSize: 12, marginTop: 8 }}>
+                  {analyzeError}
+                </p>
+              )}
               <div
                 style={{
                   display: 'flex',
@@ -651,32 +723,51 @@ function ChaptersTab({
                 }}
               >
                 <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>
-                  Processing takes about 15–30 seconds
+                  {isAnalyzing ? 'Analyzing… this takes 15–30 seconds' : 'Processing takes about 15–30 seconds'}
                 </span>
                 <button
-                  onClick={() => console.log('Analyze chapter')}
+                  onClick={isMock ? undefined : handleAnalyzeChapter}
+                  disabled={isAnalyzing || isMock}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    backgroundColor: 'hsl(var(--grimm-accent))',
+                    backgroundColor: isAnalyzing ? 'hsl(var(--grimm-accent) / 0.6)' : 'hsl(var(--grimm-accent))',
                     color: '#1a0e00',
                     padding: '8px 20px',
                     borderRadius: 8,
                     fontSize: 13,
                     fontWeight: 500,
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: isAnalyzing || isMock ? 'not-allowed' : 'pointer',
+                    opacity: isMock ? 0.5 : 1,
                   }}
                 >
-                  <Zap size={13} />
-                  Analyze chapter
+                  {isAnalyzing ? (
+                    <>
+                      <svg style={{ animation: 'spin 1s linear infinite', width: 13, height: 13 }} viewBox="0 0 24 24" fill="none">
+                        <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={13} />
+                      Analyze chapter
+                    </>
+                  )}
                 </button>
               </div>
             </>
           ) : (
             <>
               <DropZone />
+              {analyzeError && !isMock && (
+                <p style={{ color: 'hsl(var(--grimm-danger))', fontSize: 12, marginTop: 8 }}>
+                  {analyzeError}
+                </p>
+              )}
               <div
                 style={{
                   display: 'flex',
@@ -686,26 +777,40 @@ function ChaptersTab({
                 }}
               >
                 <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>
-                  Processing takes about 15–30 seconds
+                  {isAnalyzing ? 'Analyzing… this takes 15–30 seconds' : 'Processing takes about 15–30 seconds'}
                 </span>
                 <button
-                  onClick={() => console.log('Analyze chapter')}
+                  onClick={isMock ? undefined : handleAnalyzeChapter}
+                  disabled={isAnalyzing || isMock}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    backgroundColor: 'hsl(var(--grimm-accent))',
+                    backgroundColor: isAnalyzing ? 'hsl(var(--grimm-accent) / 0.6)' : 'hsl(var(--grimm-accent))',
                     color: '#1a0e00',
                     padding: '8px 20px',
                     borderRadius: 8,
                     fontSize: 13,
                     fontWeight: 500,
                     border: 'none',
-                    cursor: 'pointer',
+                    cursor: isAnalyzing || isMock ? 'not-allowed' : 'pointer',
+                    opacity: isMock ? 0.5 : 1,
                   }}
                 >
-                  <Zap size={13} />
-                  Analyze chapter
+                  {isAnalyzing ? (
+                    <>
+                      <svg style={{ animation: 'spin 1s linear infinite', width: 13, height: 13 }} viewBox="0 0 24 24" fill="none">
+                        <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Analyzing…
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={13} />
+                      Analyze chapter
+                    </>
+                  )}
                 </button>
               </div>
             </>

@@ -155,7 +155,7 @@ export async function POST(
 
     const client = getClient()
     const aiResponse = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       system: systemPrompt,
       messages: [

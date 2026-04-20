@@ -60,7 +60,7 @@ export default function LoginPage() {
             'World chat with Claude',
             'Automatic continuity flags',
             'Lore & character tracking',
-            'Timeline of your story's history',
+            "Timeline of your story's history",
           ].map((f) => (
             <div key={f} className="flex items-center gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
