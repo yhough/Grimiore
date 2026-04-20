@@ -132,7 +132,7 @@ function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
     <div className="px-8 py-12">
       <div className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Lumos' }}>
-          Welcome back.
+          Welcome back, Yaelin.
         </h1>
         <p className="text-muted-foreground mt-2">
           Pick up where you left off, or start something new.
