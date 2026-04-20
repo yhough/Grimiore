@@ -1,6 +1,9 @@
 'use client'
 
 import { LoreSidebar, type LoreSidebarHandle } from '@/components/LoreSidebar'
+import { TypingIndicator } from '@/components/TypingIndicator'
+import { WorldMessage, type WorldMessageData } from '@/components/WorldMessage'
+import { mockBook, mockLoreSections, mockMessages, MOCK_BOOK_ID } from '@/lib/mock-data'
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
@@ -63,16 +66,89 @@ export default function BookPage({ params }: Props) {
 // ── World tab ─────────────────────────────────────────────────────────────────
 
 function WorldTab({ bookId }: { bookId: string }) {
+  const isMock = bookId === MOCK_BOOK_ID
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [logline, setLogline] = useState<string | null>(null)
+  const [logline, setLogline] = useState<string | null>(isMock ? mockBook.logline : null)
+  const [messages, setMessages] = useState<WorldMessageData[]>(isMock ? mockMessages : [])
+  const [isTyping, setIsTyping] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [input, setInput] = useState('')
   const sidebarRef = useRef<LoreSidebarHandle>(null)
+  const feedRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (isMock) return
     fetch(`/api/books/${bookId}`)
       .then((r) => r.ok ? r.json() : null)
       .then((b) => b && setLogline(b.logline ?? null))
       .catch(() => {})
-  }, [bookId])
+  }, [bookId, isMock])
+
+  useEffect(() => {
+    if (isMock) return
+    fetch(`/api/books/${bookId}/world/messages`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((msgs) => setMessages(msgs))
+      .catch(() => {})
+  }, [bookId, isMock])
+
+  // Scroll to bottom whenever messages change or typing indicator appears
+  useEffect(() => {
+    const el = feedRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages, isTyping])
+
+  async function sendMessage() {
+    const text = input.trim()
+    if (!text || isTyping || isMock) return
+
+    setSendError(null)
+    const optimisticUser: WorldMessageData = {
+      id: `opt-${Date.now()}`,
+      role: 'user',
+      content: text,
+      metadata: '{}',
+      created_at: Date.now(),
+      ripple_cards: [],
+    }
+
+    setMessages((prev) => [...prev, optimisticUser])
+    setInput('')
+    setIsTyping(true)
+
+    try {
+      const res = await fetch(`/api/books/${bookId}/world/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.error || `Request failed (${res.status})`)
+      }
+
+      // Replace optimistic user message with server version, add assistant message
+      setMessages((prev) => {
+        const withoutOptimistic = prev.filter((m) => m.id !== optimisticUser.id)
+        return [...withoutOptimistic, data.user_message, data.message]
+      })
+
+      // Refetch lore sidebar if state was updated
+      sidebarRef.current?.refetch()
+    } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id))
+      setSendError(err instanceof Error ? err.message : 'Something went wrong')
+      setInput(text) // restore input so user can retry
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
+  function handleRippleAccepted() {
+    sidebarRef.current?.refetch()
+  }
 
   return (
     <div className="h-full flex overflow-hidden">
@@ -82,7 +158,11 @@ function WorldTab({ bookId }: { bookId: string }) {
           sidebarOpen ? 'w-[270px]' : 'w-0 border-r-0'
         }`}
       >
-        <LoreSidebar ref={sidebarRef} bookId={bookId} />
+        <LoreSidebar
+          ref={sidebarRef}
+          bookId={bookId}
+          mockData={isMock ? { logline: mockBook.logline, sections: mockLoreSections } : undefined}
+        />
       </aside>
 
       {/* Chat column — three zones */}
@@ -103,27 +183,43 @@ function WorldTab({ bookId }: { bookId: string }) {
         </div>
 
         {/* Zone 2 — Scrollable message feed */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div ref={feedRef} className="flex-1 min-h-0 overflow-y-auto">
           <div className="flex flex-col gap-6 px-6 py-8">
-            {/* Messages render here — placeholder */}
-            <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">
-                Narrate an event or ask a question to begin.
-              </p>
-            </div>
+            {messages.length === 0 && !isTyping ? (
+              <div className="flex items-center justify-center py-16">
+                <p className="text-sm text-muted-foreground">
+                  Narrate an event or ask a question to begin.
+                </p>
+              </div>
+            ) : (
+              messages.map((msg) => (
+                <WorldMessage
+                  key={msg.id}
+                  message={msg}
+                  bookId={bookId}
+                  onRippleAccepted={handleRippleAccepted}
+                />
+              ))
+            )}
+            {isTyping && <TypingIndicator />}
           </div>
         </div>
 
         {/* Zone 3 — Pinned input bar */}
         <div className="shrink-0 border-t border-border bg-background px-4 py-3">
+          {sendError && (
+            <p className="text-xs text-red-600 mb-2 px-1">{sendError}</p>
+          )}
           <textarea
             rows={1}
+            value={input}
+            onChange={(e) => { setInput(e.target.value); if (sendError) setSendError(null) }}
             placeholder="Narrate an event, establish a fact, or ask a question…"
             className="w-full resize-none rounded-lg border border-input bg-card px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring leading-relaxed"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                // send handler wired in next step
+                sendMessage()
               }
             }}
           />

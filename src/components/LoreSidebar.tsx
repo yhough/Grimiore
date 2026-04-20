@@ -31,16 +31,18 @@ export interface LoreSidebarHandle {
 
 interface Props {
   bookId: string
+  mockData?: LoreData
 }
 
-export const LoreSidebar = forwardRef<LoreSidebarHandle, Props>(function LoreSidebar({ bookId }, ref) {
-  const [data, setData] = useState<LoreData | null>(null)
+export const LoreSidebar = forwardRef<LoreSidebarHandle, Props>(function LoreSidebar({ bookId, mockData }, ref) {
+  const [data, setData] = useState<LoreData | null>(mockData ?? null)
   const [open, setOpen] = useState<Record<string, boolean>>({
     characters: true, factions: true, locations: true, magic: true, misc: true,
   })
   const [selected, setSelected] = useState<LoreEntry | null>(null)
 
   function fetchLore() {
+    if (mockData) return
     fetch(`/api/books/${bookId}/lore`)
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d && setData(d))
