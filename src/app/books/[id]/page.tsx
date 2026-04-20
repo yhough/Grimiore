@@ -4,6 +4,7 @@ import { CharacterCard } from '@/components/CharacterCard'
 import { CharacterDetailSlideOver, type CharacterFull } from '@/components/CharacterDetailSlideOver'
 import { ChapterList } from '@/components/ChaptersTab/ChapterList'
 import { ProcessingPipeline } from '@/components/ChaptersTab/ProcessingPipeline'
+import { TimelineTab as TimelineTabContent } from '@/components/TimelineTab'
 import { LoreSidebar, type LoreSidebarHandle } from '@/components/LoreSidebar'
 import { TypingIndicator } from '@/components/TypingIndicator'
 import { WorldMessage, type WorldMessageData } from '@/components/WorldMessage'
@@ -610,6 +611,7 @@ function ChaptersTab({ bookId }: { bookId: string }) {
         {/* ── Chapter list ── */}
         <ChapterList
           chapters={sortedChapters}
+          bookId={bookId}
           expandedChapterId={expandedChapterId}
           onToggleChapter={(id) =>
             setExpandedChapterId((prev) => (prev === id ? null : id))
@@ -655,9 +657,5 @@ function DropZone() {
 }
 
 function TimelineTab({ bookId }: { bookId: string }) {
-  return (
-    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-      Timeline tab coming soon. Book ID: {bookId}
-    </div>
-  )
+  return <TimelineTabContent bookId={bookId} />
 }

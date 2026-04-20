@@ -100,6 +100,24 @@
   animation: grimm-bg-pulse 2s ease-in-out infinite;
 }
 
+@keyframes grimm-present-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.15); opacity: 0.6; }
+}
+
+@keyframes grimm-event-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.grimm-present-marker {
+  animation: grimm-present-pulse 2s ease-in-out infinite;
+}
+
+.grimm-event-node {
+  animation: grimm-event-in 200ms ease both;
+}
+
 @layer base {
   * {
     @apply border-border;

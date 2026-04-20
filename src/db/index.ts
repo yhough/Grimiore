@@ -99,6 +99,14 @@ function createDb(): Database.Database {
       created_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS chapter_annotations (
+      id TEXT PRIMARY KEY,
+      chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+      book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+      text TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS continuity_flags (
       id TEXT PRIMARY KEY,
       chapter_id TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -112,6 +120,8 @@ function createDb(): Database.Database {
 
   // Non-destructive migrations
   try { sqlite.exec(`ALTER TABLE books ADD COLUMN cover_image TEXT`) } catch { /* already exists */ }
+  try { sqlite.exec(`ALTER TABLE timeline_events ADD COLUMN category TEXT NOT NULL DEFAULT 'history'`) } catch { /* already exists */ }
+  try { sqlite.exec(`ALTER TABLE timeline_events ADD COLUMN characters TEXT NOT NULL DEFAULT '[]'`) } catch { /* already exists */ }
 
   return sqlite
 }

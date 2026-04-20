@@ -1,12 +1,20 @@
 'use client'
 
-import { mockChapters } from '@/lib/mock-data'
-import { AlertTriangle, ChevronDown, Info, Upload } from 'lucide-react'
+import { mockChapters, MOCK_BOOK_ID } from '@/lib/mock-data'
+import { AlertTriangle, Info, PenLine, Trash2, Upload, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 type Chapter = typeof mockChapters[0]
 
+interface Annotation {
+  id: string
+  text: string
+  created_at: number
+}
+
 interface Props {
   chapter: Chapter
+  bookId: string
   isExpanded: boolean
   onToggle: () => void
 }
@@ -15,138 +23,134 @@ function formatDate(date: Date) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
 }
 
+function formatAnnotationTime(ts: number) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  }).format(new Date(ts))
+}
+
 function formatNumber(n: number) {
   return n.toLocaleString('en-US')
+}
+
+const btn: React.CSSProperties = {
+  backgroundColor: 'hsl(var(--grimm-surface-raised))',
+  color: 'hsl(var(--grimm-muted))',
+  border: '0.5px solid hsl(var(--grimm-border))',
+  padding: '6px 14px',
+  borderRadius: 6,
+  fontSize: 12,
+  cursor: 'pointer',
 }
 
 function StatusBadge({ chapter }: { chapter: Chapter }) {
   if (!chapter.processed) {
     return (
-      <span
-        style={{
-          backgroundColor: 'hsl(var(--grimm-surface-raised))',
-          color: 'hsl(var(--grimm-muted))',
-          fontSize: 11,
-          padding: '2px 8px',
-          borderRadius: 20,
-          fontWeight: 500,
-        }}
-      >
+      <span style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>
         Unprocessed
       </span>
     )
   }
-
   const errors = chapter.flags.filter((f) => f.severity === 'error')
   const warnings = chapter.flags.filter((f) => f.severity === 'warning')
-
   if (errors.length > 0) {
     return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          backgroundColor: 'hsl(var(--grimm-danger) / 0.12)',
-          color: 'hsl(var(--grimm-danger))',
-          fontSize: 11,
-          padding: '2px 8px',
-          borderRadius: 20,
-          fontWeight: 500,
-        }}
-      >
-        <AlertTriangle size={12} />
-        {errors.length} {errors.length === 1 ? 'issue' : 'issues'}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: 'hsl(var(--grimm-danger) / 0.12)', color: 'hsl(var(--grimm-danger))', fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>
+        <AlertTriangle size={12} />{errors.length} {errors.length === 1 ? 'issue' : 'issues'}
       </span>
     )
   }
-
   if (warnings.length > 0) {
     return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          backgroundColor: 'hsl(var(--grimm-accent) / 0.12)',
-          color: 'hsl(var(--grimm-accent))',
-          fontSize: 11,
-          padding: '2px 8px',
-          borderRadius: 20,
-          fontWeight: 500,
-        }}
-      >
-        <AlertTriangle size={12} />
-        {warnings.length} {warnings.length === 1 ? 'warning' : 'warnings'}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: 'hsl(var(--grimm-accent) / 0.12)', color: 'hsl(var(--grimm-accent))', fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>
+        <AlertTriangle size={12} />{warnings.length} {warnings.length === 1 ? 'warning' : 'warnings'}
       </span>
     )
   }
-
   return (
-    <span
-      style={{
-        backgroundColor: 'hsl(var(--grimm-success))',
-        color: 'hsl(var(--grimm-success-text))',
-        fontSize: 11,
-        padding: '2px 8px',
-        borderRadius: 20,
-        fontWeight: 500,
-      }}
-    >
+    <span style={{ backgroundColor: 'hsl(var(--grimm-success))', color: 'hsl(var(--grimm-success-text))', fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 500 }}>
       Clean
     </span>
   )
 }
 
-export function ChapterCard({ chapter, isExpanded, onToggle }: Props) {
+export function ChapterCard({ chapter, bookId, isExpanded, onToggle }: Props) {
+  const isMock = bookId === MOCK_BOOK_ID
+  const [annotations, setAnnotations] = useState<Annotation[]>([])
+  const [addingNote, setAddingNote] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Fetch annotations when card first expands (real books only)
+  useEffect(() => {
+    if (!isExpanded || isMock) return
+    fetch(`/api/books/${bookId}/chapters/${chapter.id}/annotations`)
+      .then((r) => r.ok ? r.json() : [])
+      .then(setAnnotations)
+      .catch(() => {})
+  }, [isExpanded, isMock, bookId, chapter.id])
+
+  // Focus textarea when add-note form opens
+  useEffect(() => {
+    if (addingNote) setTimeout(() => textareaRef.current?.focus(), 50)
+  }, [addingNote])
+
+  async function saveNote() {
+    const text = noteText.trim()
+    if (!text) return
+    setSaving(true)
+
+    if (isMock) {
+      const ann: Annotation = { id: `local-${Date.now()}`, text, created_at: Date.now() }
+      setAnnotations((prev) => [...prev, ann])
+    } else {
+      try {
+        const res = await fetch(`/api/books/${bookId}/chapters/${chapter.id}/annotations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+        if (res.ok) {
+          const ann = await res.json() as Annotation
+          setAnnotations((prev) => [...prev, ann])
+        }
+      } catch { /* silent */ }
+    }
+
+    setNoteText('')
+    setAddingNote(false)
+    setSaving(false)
+  }
+
+  async function deleteNote(id: string) {
+    if (isMock) {
+      setAnnotations((prev) => prev.filter((a) => a.id !== id))
+      return
+    }
+    try {
+      await fetch(`/api/books/${bookId}/chapters/${chapter.id}/annotations/${id}`, { method: 'DELETE' })
+      setAnnotations((prev) => prev.filter((a) => a.id !== id))
+    } catch { /* silent */ }
+  }
+
+  const showNotesSection = annotations.length > 0 || addingNote
+
   return (
-    <div
-      style={{
-        backgroundColor: 'hsl(var(--grimm-surface))',
-        border: '0.5px solid hsl(var(--grimm-border))',
-        borderRadius: 10,
-        overflow: 'hidden',
-      }}
-    >
-      {/* Header */}
+    <div style={{ backgroundColor: 'hsl(var(--grimm-surface))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 10, overflow: 'hidden' }}>
+
+      {/* ── Header ── */}
       <div
-        role="button"
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={(e) => e.key === 'Enter' && onToggle()}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 20px',
-          cursor: 'pointer',
-          borderRadius: isExpanded ? '10px 10px 0 0' : 10,
-          transition: 'background-color 150ms ease',
-        }}
+        role="button" tabIndex={0}
+        onClick={onToggle} onKeyDown={(e) => e.key === 'Enter' && onToggle()}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', cursor: 'pointer', borderRadius: isExpanded ? '10px 10px 0 0' : 10, transition: 'background-color 150ms ease' }}
         className="hover:bg-grimm-surface-raised"
       >
-        {/* Left group */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span
-            style={{
-              backgroundColor: 'hsl(var(--grimm-surface-raised))',
-              color: 'hsl(var(--grimm-muted))',
-              fontSize: 11,
-              fontWeight: 500,
-              padding: '3px 8px',
-              borderRadius: 4,
-              flexShrink: 0,
-            }}
-          >
+          <span style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 4, flexShrink: 0 }}>
             Ch. {String(chapter.number).padStart(2, '0')}
           </span>
-          <span
-            style={{
-              color: 'hsl(var(--grimm-text))',
-              fontSize: 15,
-              fontFamily: 'var(--font-playfair)',
-            }}
-          >
+          <span style={{ color: 'hsl(var(--grimm-text))', fontSize: 15, fontFamily: 'var(--font-playfair)' }}>
             {chapter.title}
           </span>
           {chapter.wordCount > 0 && (
@@ -155,92 +159,43 @@ export function ChapterCard({ chapter, isExpanded, onToggle }: Props) {
             </span>
           )}
         </div>
-
-        {/* Right group */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <StatusBadge chapter={chapter} />
-          <ChevronDown
+          <Info
             size={14}
-            style={{
-              color: 'hsl(var(--grimm-muted))',
-              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 200ms ease',
-            }}
+            style={{ color: isExpanded ? 'hsl(var(--grimm-muted))' : 'transparent', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 200ms ease' }}
           />
+          <svg
+            width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+            style={{ color: 'hsl(var(--grimm-muted))', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 200ms ease', flexShrink: 0 }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </div>
       </div>
 
-      {/* Expandable content */}
-      <div
-        style={{
-          maxHeight: isExpanded ? 1200 : 0,
-          overflow: 'hidden',
-          transition: 'max-height 250ms ease',
-        }}
-      >
-        <div
-          style={{
-            opacity: isExpanded ? 1 : 0,
-            transform: isExpanded ? 'translateY(0)' : 'translateY(4px)',
-            transition: isExpanded ? 'opacity 200ms ease 50ms, transform 200ms ease 50ms' : 'none',
-          }}
-        >
-          {/* Divider */}
+      {/* ── Expandable content ── */}
+      <div style={{ maxHeight: isExpanded ? 2000 : 0, overflow: 'hidden', transition: 'max-height 250ms ease' }}>
+        <div style={{ opacity: isExpanded ? 1 : 0, transform: isExpanded ? 'translateY(0)' : 'translateY(4px)', transition: isExpanded ? 'opacity 200ms ease 50ms, transform 200ms ease 50ms' : 'none' }}>
           <div style={{ height: '0.5px', backgroundColor: 'hsl(var(--grimm-border))' }} />
 
           {chapter.processed ? (
             <>
               {/* Summary */}
               <div style={{ padding: '16px 20px' }}>
-                <p
-                  style={{
-                    color: 'hsl(var(--grimm-muted))',
-                    fontSize: 11,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    marginBottom: 6,
-                  }}
-                >
-                  Summary
-                </p>
-                <p
-                  className="voice-of-world"
-                  style={{
-                    color: 'hsl(var(--grimm-text))',
-                    fontSize: 14,
-                    lineHeight: 1.8,
-                  }}
-                >
-                  {chapter.summary}
-                </p>
+                <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Summary</p>
+                <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 14, lineHeight: 1.8 }}>{chapter.summary}</p>
               </div>
 
               {/* Characters */}
               {chapter.charactersAppearing.length > 0 && (
                 <div style={{ padding: '0 20px 16px' }}>
-                  <p
-                    style={{
-                      color: 'hsl(var(--grimm-muted))',
-                      fontSize: 11,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                    }}
-                  >
+                  <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     Characters in this chapter
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {chapter.charactersAppearing.map((name) => (
-                      <span
-                        key={name}
-                        style={{
-                          backgroundColor: 'hsl(var(--grimm-surface-raised))',
-                          color: 'hsl(var(--grimm-muted))',
-                          fontSize: 12,
-                          padding: '4px 10px',
-                          borderRadius: 20,
-                          border: '0.5px solid hsl(var(--grimm-border))',
-                        }}
-                      >
+                      <span key={name} style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', fontSize: 12, padding: '4px 10px', borderRadius: 20, border: '0.5px solid hsl(var(--grimm-border))' }}>
                         {name}
                       </span>
                     ))}
@@ -248,67 +203,26 @@ export function ChapterCard({ chapter, isExpanded, onToggle }: Props) {
                 </div>
               )}
 
-              {/* Continuity Flags */}
+              {/* Continuity flags */}
               {chapter.flags.length > 0 && (
                 <div style={{ padding: '0 20px 20px' }}>
-                  <p
-                    style={{
-                      color: 'hsl(var(--grimm-muted))',
-                      fontSize: 11,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      marginBottom: 10,
-                    }}
-                  >
+                  <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
                     Continuity flags
                   </p>
                   {chapter.flags.map((flag) => {
                     const isError = flag.severity === 'error'
                     return (
-                      <div
-                        key={flag.id}
-                        style={{
-                          backgroundColor: isError
-                            ? 'hsl(var(--grimm-danger) / 0.1)'
-                            : 'hsl(var(--grimm-accent) / 0.1)',
-                          borderLeft: `3px solid hsl(var(--grimm-${isError ? 'danger' : 'accent'}))`,
-                          borderRadius: '0 6px 6px 0',
-                          padding: '10px 14px',
-                          marginBottom: 8,
-                        }}
-                      >
+                      <div key={flag.id} style={{ backgroundColor: isError ? 'hsl(var(--grimm-danger) / 0.1)' : 'hsl(var(--grimm-accent) / 0.1)', borderLeft: `3px solid hsl(var(--grimm-${isError ? 'danger' : 'accent'}))`, borderRadius: '0 6px 6px 0', padding: '10px 14px', marginBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {isError ? (
-                            <AlertTriangle
-                              size={12}
-                              style={{ color: 'hsl(var(--grimm-danger))', flexShrink: 0 }}
-                            />
-                          ) : (
-                            <Info
-                              size={12}
-                              style={{ color: 'hsl(var(--grimm-accent))', flexShrink: 0 }}
-                            />
-                          )}
-                          <span
-                            style={{
-                              color: isError ? 'hsl(var(--grimm-danger))' : 'hsl(var(--grimm-accent))',
-                              fontSize: 11,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.06em',
-                              fontWeight: 500,
-                            }}
-                          >
+                          {isError
+                            ? <AlertTriangle size={12} style={{ color: 'hsl(var(--grimm-danger))', flexShrink: 0 }} />
+                            : <Info size={12} style={{ color: 'hsl(var(--grimm-accent))', flexShrink: 0 }} />
+                          }
+                          <span style={{ color: isError ? 'hsl(var(--grimm-danger))' : 'hsl(var(--grimm-accent))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500 }}>
                             {isError ? 'Continuity error' : 'Worth checking'}
                           </span>
                         </div>
-                        <p
-                          style={{
-                            color: 'hsl(var(--grimm-text))',
-                            fontSize: 13,
-                            lineHeight: 1.6,
-                            marginTop: 6,
-                          }}
-                        >
+                        <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 13, lineHeight: 1.6, marginTop: 6 }}>
                           {flag.description}
                         </p>
                       </div>
@@ -316,98 +230,131 @@ export function ChapterCard({ chapter, isExpanded, onToggle }: Props) {
                   })}
                 </div>
               )}
-
-              {/* Action row */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 20px 16px',
-                  borderTop: '0.5px solid hsl(var(--grimm-border))',
-                }}
-              >
-                <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>
-                  Uploaded {formatDate(chapter.createdAt)}
-                </span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {(['Re-upload', 'View full text'] as const).map((label) => (
-                    <button
-                      key={label}
-                      onClick={() => console.log(label, chapter.id)}
-                      style={{
-                        backgroundColor: 'hsl(var(--grimm-surface-raised))',
-                        color: 'hsl(var(--grimm-muted))',
-                        border: '0.5px solid hsl(var(--grimm-border))',
-                        padding: '6px 14px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        transition: 'color 150ms ease',
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = 'hsl(var(--grimm-text))')
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = 'hsl(var(--grimm-muted))')
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </>
           ) : (
-            /* Unprocessed state */
-            <div
-              style={{
-                padding: '24px 20px',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-              }}
-            >
+            /* Unprocessed */
+            <div style={{ padding: '24px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <Upload size={32} style={{ color: 'hsl(var(--grimm-muted))' }} />
-              <p
-                style={{
-                  color: 'hsl(var(--grimm-text))',
-                  fontSize: 14,
-                  marginTop: 12,
-                }}
-              >
+              <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 14, marginTop: 12 }}>
                 This chapter hasn&apos;t been analyzed yet
               </p>
-              <p
-                style={{
-                  color: 'hsl(var(--grimm-muted))',
-                  fontSize: 13,
-                  marginTop: 6,
-                  maxWidth: 360,
-                  lineHeight: 1.5,
-                }}
-              >
+              <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 13, marginTop: 6, maxWidth: 360, lineHeight: 1.5 }}>
                 Upload the text to extract characters, check continuity, and update your world.
               </p>
               <button
                 onClick={() => console.log('Analyze now', chapter.id)}
-                style={{
-                  backgroundColor: 'hsl(var(--grimm-accent))',
-                  color: '#1a0e00',
-                  padding: '8px 18px',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  marginTop: 16,
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
+                style={{ backgroundColor: 'hsl(var(--grimm-accent))', color: '#1a0e00', padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, marginTop: 16, border: 'none', cursor: 'pointer' }}
               >
                 Analyze now
               </button>
             </div>
           )}
+
+          {/* ── Notes section ── */}
+          {showNotesSection && (
+            <div style={{ padding: '0 20px 16px', borderTop: annotations.length > 0 || addingNote ? '0.5px solid hsl(var(--grimm-border))' : 'none', paddingTop: 16 }}>
+              {annotations.length > 0 && (
+                <>
+                  <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                    Notes
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: addingNote ? 12 : 0 }}>
+                    {annotations.map((ann) => (
+                      <div
+                        key={ann.id}
+                        style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 6, padding: '10px 12px' }}
+                      >
+                        <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+                          {ann.text}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11 }}>
+                            {formatAnnotationTime(ann.created_at)}
+                          </span>
+                          <button
+                            onClick={() => deleteNote(ann.id)}
+                            title="Delete note"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'hsl(var(--grimm-muted))', display: 'flex', alignItems: 'center', borderRadius: 4, transition: 'color 150ms ease' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--grimm-danger))')}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--grimm-muted))')}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Inline add-note form */}
+              {addingNote && (
+                <div>
+                  {annotations.length === 0 && (
+                    <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                      Notes
+                    </p>
+                  )}
+                  <textarea
+                    ref={textareaRef}
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    placeholder="Write a note about this chapter..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveNote()
+                      if (e.key === 'Escape') { setAddingNote(false); setNoteText('') }
+                    }}
+                    style={{ width: '100%', minHeight: 80, backgroundColor: 'hsl(var(--grimm-surface))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 6, padding: '10px 12px', fontSize: 13, color: 'hsl(var(--grimm-text))', resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.6, boxSizing: 'border-box' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                    <button
+                      onClick={() => { setAddingNote(false); setNoteText('') }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--grimm-muted))', fontSize: 12, padding: '4px 8px' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveNote}
+                      disabled={!noteText.trim() || saving}
+                      style={{ backgroundColor: noteText.trim() ? 'hsl(var(--grimm-accent))' : 'hsl(var(--grimm-surface-raised))', color: noteText.trim() ? '#1a0e00' : 'hsl(var(--grimm-muted))', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 500, cursor: noteText.trim() ? 'pointer' : 'default', transition: 'background-color 150ms ease' }}
+                    >
+                      {saving ? 'Saving…' : 'Save note'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Action row ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 16px', borderTop: '0.5px solid hsl(var(--grimm-border))' }}>
+            <span style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12 }}>
+              {chapter.processed ? `Uploaded ${formatDate(chapter.createdAt)}` : 'Not yet analyzed'}
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => { setAddingNote(true) }}
+                style={{ ...btn, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--grimm-text))')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--grimm-muted))')}
+              >
+                <PenLine size={11} />
+                Add note
+              </button>
+              {chapter.processed && (['Re-upload', 'View full text'] as const).map((label) => (
+                <button
+                  key={label}
+                  onClick={() => console.log(label, chapter.id)}
+                  style={btn}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--grimm-text))')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--grimm-muted))')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

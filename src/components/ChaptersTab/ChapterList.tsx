@@ -9,6 +9,7 @@ type SortBy = 'order' | 'recent'
 
 interface Props {
   chapters: Chapter[]
+  bookId: string
   expandedChapterId: string | null
   onToggleChapter: (id: string) => void
   sortBy: SortBy
@@ -17,6 +18,7 @@ interface Props {
 
 export function ChapterList({
   chapters,
+  bookId,
   expandedChapterId,
   onToggleChapter,
   sortBy,
@@ -118,6 +120,7 @@ export function ChapterList({
           <ChapterCard
             key={chapter.id}
             chapter={chapter}
+            bookId={bookId}
             isExpanded={expandedChapterId === chapter.id}
             onToggle={() => onToggleChapter(chapter.id)}
           />
