@@ -307,7 +307,7 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
               </p>
               <button
                 onClick={() => console.log('Analyze now', chapter.id)}
-                style={{ backgroundColor: 'hsl(var(--grimm-accent))', color: '#1a0e00', padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, marginTop: 16, border: 'none', cursor: 'pointer' }}
+                style={{ backgroundColor: 'hsl(var(--grimm-accent))', color: 'hsl(var(--background))', padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 500, marginTop: 16, border: 'none', cursor: 'pointer' }}
               >
                 Analyze now
               </button>

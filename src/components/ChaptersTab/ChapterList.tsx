@@ -66,7 +66,7 @@ export function ChapterList({
           onClick={() => console.log('Upload chapter')}
           style={{
             backgroundColor: 'hsl(var(--grimm-accent))',
-            color: '#1a0e00',
+            color: 'hsl(var(--background))',
             padding: '8px 18px',
             borderRadius: 8,
             fontSize: 13,
