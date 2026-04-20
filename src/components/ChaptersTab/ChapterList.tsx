@@ -14,7 +14,7 @@ interface Props {
   onToggleChapter: (id: string) => void
   sortBy: SortBy
   onSortChange: (value: SortBy) => void
-  onResolveViaChat?: (message: string) => void
+  onResolveViaChat?: (message: string, flagId: string) => void
 }
 
 export function ChapterList({

@@ -32,11 +32,19 @@ interface Props {
 export default function BookPage({ params }: Props) {
   const [tab, setTab] = useState<Tab>('world')
   const [preFillMessage, setPreFillMessage] = useState<string | null>(null)
+  const [chaptersKey, setChaptersKey] = useState(0)
+  const [pendingResolveFlagId, setPendingResolveFlagId] = useState<string | null>(null)
   const { dark, toggle: toggleTheme } = useTheme()
 
-  function handleResolveViaChat(message: string) {
+  function handleResolveViaChat(message: string, flagId: string) {
     setPreFillMessage(message)
+    setPendingResolveFlagId(flagId)
     setTab('world')
+  }
+
+  function handleTabChange(t: Tab) {
+    setTab(t)
+    if (t === 'chapters') setChaptersKey((k) => k + 1)
   }
 
   return (
@@ -53,7 +61,7 @@ export default function BookPage({ params }: Props) {
             {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
               <button
                 key={t}
-                onClick={() => setTab(t)}
+                onClick={() => handleTabChange(t)}
                 className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                   tab === t
                     ? 'bg-primary/15 text-primary font-medium'
@@ -81,12 +89,18 @@ export default function BookPage({ params }: Props) {
             bookId={params.id}
             preFillMessage={preFillMessage}
             onPreFillConsumed={() => setPreFillMessage(null)}
+            pendingResolveFlagId={pendingResolveFlagId}
+            onFlagResolved={() => {
+              setPendingResolveFlagId(null)
+              setChaptersKey((k) => k + 1)
+            }}
           />
         )}
         {tab === 'characters' && <CharactersTab bookId={params.id} />}
         {tab === 'chapters' && (
           <ChaptersTab
             bookId={params.id}
+            refreshKey={chaptersKey}
             onResolveViaChat={handleResolveViaChat}
           />
         )}
@@ -102,10 +116,14 @@ function WorldTab({
   bookId,
   preFillMessage,
   onPreFillConsumed,
+  pendingResolveFlagId,
+  onFlagResolved,
 }: {
   bookId: string
   preFillMessage?: string | null
   onPreFillConsumed?: () => void
+  pendingResolveFlagId?: string | null
+  onFlagResolved?: () => void
 }) {
   const isMock = bookId === MOCK_BOOK_ID
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -257,6 +275,13 @@ function WorldTab({
 
       // Refetch lore sidebar if state was updated
       sidebarRef.current?.refetch()
+
+      // If this message was sent to resolve a specific chapter flag, mark it resolved
+      if (pendingResolveFlagId && !isMock) {
+        fetch(`/api/books/${bookId}/flags/${pendingResolveFlagId}`, { method: 'PATCH' })
+          .then(() => onFlagResolved?.())
+          .catch(() => {})
+      }
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUser.id))
       setSendError(err instanceof Error ? err.message : 'Something went wrong')
@@ -477,10 +502,12 @@ function chaptersFromApi(raw: unknown[]): RealChapter[] {
 
 function ChaptersTab({
   bookId,
+  refreshKey,
   onResolveViaChat,
 }: {
   bookId: string
-  onResolveViaChat?: (chapterNumber: number, flagDescription: string) => void
+  refreshKey?: number
+  onResolveViaChat?: (message: string, flagId: string) => void
 }) {
   const isMock = bookId === MOCK_BOOK_ID
   const [uploadMode, setUploadMode] = useState<'paste' | 'file'>('paste')
@@ -502,7 +529,7 @@ function ChaptersTab({
       .then((r) => r.ok ? r.json() : [])
       .then((data: unknown[]) => setChapters(chaptersFromApi(data)))
       .catch(() => {})
-  }, [bookId, isMock])
+  }, [bookId, isMock, refreshKey])
 
   function scrollToUpload() {
     uploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })

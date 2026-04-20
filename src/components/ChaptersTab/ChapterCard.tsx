@@ -1,7 +1,7 @@
 'use client'
 
 import { mockChapters, MOCK_BOOK_ID } from '@/lib/mock-data'
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Edit3, Info, PenLine, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, Edit3, Info, PenLine, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 type Chapter = typeof mockChapters[0]
@@ -17,7 +17,7 @@ interface Props {
   bookId: string
   isExpanded: boolean
   onToggle: () => void
-  onResolveViaChat?: (message: string) => void
+  onResolveViaChat?: (message: string, flagId: string) => void
 }
 
 function formatDate(date: Date) {
@@ -88,12 +88,10 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
   const [addingNote, setAddingNote] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [saving, setSaving] = useState(false)
-  const [resolvedFlagsOpen, setResolvedFlagsOpen] = useState(false)
   const [showAllNotes, setShowAllNotes] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const unresolvedFlags = chapter.flags.filter((f) => !f.resolved)
-  const resolvedFlags = chapter.flags.filter((f) => f.resolved)
   const correctionNotes = chapter.correctionNotes ?? []
 
   // Fetch annotations when card first expands (real books only)
@@ -252,14 +250,12 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
                 </div>
               )}
 
-              {/* Continuity flags */}
-              {chapter.flags.length > 0 && (
+              {/* Continuity flags — unresolved only */}
+              {unresolvedFlags.length > 0 && (
                 <div style={{ padding: '0 20px 20px' }}>
                   <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
                     Continuity flags
                   </p>
-
-                  {/* Unresolved flags */}
                   {unresolvedFlags.map((flag) => {
                     const isError = flag.severity === 'error'
                     return (
@@ -286,7 +282,7 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
                                 : ''
                               const message =
                                 `In Chapter ${chapter.number} — "${chapter.title}" — there is a ${severityLabel}:\n\n"${flag.description}"${summaryLine}\n\nHow should I correct this?`
-                              onResolveViaChat(message)
+                              onResolveViaChat(message, flag.id)
                             }}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--grimm-accent))', fontSize: 12, padding: '4px 0 0', display: 'inline-flex', alignItems: 'center', gap: 3 }}
                           >
@@ -296,48 +292,6 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
                       </div>
                     )
                   })}
-
-                  {/* Resolved flags — collapsible */}
-                  {resolvedFlags.length > 0 && (
-                    <div style={{ marginTop: unresolvedFlags.length > 0 ? 8 : 0 }}>
-                      <button
-                        onClick={() => setResolvedFlagsOpen((o) => !o)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, color: 'hsl(var(--grimm-muted))', fontSize: 12, padding: '4px 0', marginBottom: resolvedFlagsOpen ? 8 : 0 }}
-                      >
-                        {resolvedFlagsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        Resolved flags ({resolvedFlags.length})
-                      </button>
-
-                      {resolvedFlagsOpen && resolvedFlags.map((flag) => (
-                        <div
-                          key={flag.id}
-                          style={{
-                            backgroundColor: 'hsl(var(--grimm-success) / 0.4)',
-                            borderLeft: '3px solid hsl(var(--grimm-success-text) / 0.5)',
-                            borderRadius: '0 6px 6px 0',
-                            padding: '10px 14px',
-                            marginBottom: 8,
-                            opacity: 0.8,
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <Check size={12} style={{ color: 'hsl(var(--grimm-success-text))', flexShrink: 0 }} />
-                              <span style={{ color: 'hsl(var(--grimm-success-text))', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 500 }}>
-                                {flag.severity === 'error' ? 'Continuity error' : 'Worth checking'}
-                              </span>
-                            </div>
-                            <span style={{ backgroundColor: 'hsl(var(--grimm-success))', color: 'hsl(var(--grimm-success-text))', fontSize: 10, padding: '1px 7px', borderRadius: 20, fontWeight: 500, flexShrink: 0 }}>
-                              Resolved
-                            </span>
-                          </div>
-                          <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 13, lineHeight: 1.6, marginTop: 6 }}>
-                            {flag.description}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
             </>
