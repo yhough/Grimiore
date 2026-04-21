@@ -6,12 +6,13 @@ import { ChapterList } from '@/components/ChaptersTab/ChapterList'
 import { ProcessingPipeline } from '@/components/ChaptersTab/ProcessingPipeline'
 import { TimelineTab as TimelineTabContent } from '@/components/TimelineTab'
 import { LoreSidebar, type LoreSidebarHandle } from '@/components/LoreSidebar'
+import { BookDetailsSlideOver } from '@/components/BookDetailsSlideOver'
 import { TypingIndicator } from '@/components/TypingIndicator'
 import { WorldMessage, type WorldMessageData } from '@/components/WorldMessage'
 import { mockBook, mockChapters, mockCharacters, mockLoreSections, mockMessages, mockProcessingSteps, MOCK_BOOK_ID } from '@/lib/mock-data'
 import { useTheme } from '@/hooks/useTheme'
 import type { ChatMetadata } from '@/types'
-import { AlertTriangle, BookOpen, CheckCircle, ChevronLeft, ChevronRight, Moon, Sparkles, Sun, Upload, Zap } from 'lucide-react'
+import { AlertTriangle, BookOpen, CheckCircle, ChevronLeft, ChevronRight, Moon, Settings2, Sparkles, Sun, Upload, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -36,7 +37,19 @@ export default function BookPage({ params }: Props) {
   const [charactersKey, setCharactersKey] = useState(0)
   const [timelineKey, setTimelineKey] = useState(0)
   const [pendingResolveFlagId, setPendingResolveFlagId] = useState<string | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [bookDetails, setBookDetails] = useState<{ title: string; genre: string; premise: string | null } | null>(null)
   const { dark, toggle: toggleTheme } = useTheme()
+
+  const isMockBook = params.id === MOCK_BOOK_ID
+
+  useEffect(() => {
+    if (isMockBook) return
+    fetch(`/api/books/${params.id}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((b) => b && setBookDetails({ title: b.title, genre: b.genre, premise: b.premise }))
+      .catch(() => {})
+  }, [params.id, isMockBook])
 
   function handleResolveViaChat(message: string, flagId: string) {
     setPreFillMessage(message)
@@ -81,16 +94,34 @@ export default function BookPage({ params }: Props) {
                 {TAB_LABELS[t]}
               </button>
             ))}
+            <div className="w-px h-4 bg-border mx-1" />
+            {!isMockBook && (
+              <button
+                onClick={() => setDetailsOpen(true)}
+                title="Edit book details"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Settings2 size={14} />
+              </button>
+            )}
             <button
               onClick={toggleTheme}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="ml-1 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               {dark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
           </nav>
         </div>
       </header>
+
+      <BookDetailsSlideOver
+        open={detailsOpen}
+        bookId={params.id}
+        initial={bookDetails}
+        onClose={() => setDetailsOpen(false)}
+        onSaved={(updated) => setBookDetails(updated)}
+      />
 
       {/* Tab content — fills remaining height, no outer scroll */}
       <div className="flex-1 min-h-0">
