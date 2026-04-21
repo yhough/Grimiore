@@ -944,6 +944,16 @@ function ChaptersTab({
           onResolveViaChat={onResolveViaChat}
           onRequestUpload={handleRequestUpload}
           onScrollToUpload={scrollToUpload}
+          onChapterDeleted={(deletedId) => {
+            setChapters((prev) => {
+              const deleted = prev.find((c) => c.id === deletedId)
+              if (!deleted) return prev
+              return prev
+                .filter((c) => c.id !== deletedId)
+                .map((c) => c.number > deleted.number ? { ...c, number: c.number - 1 } : c)
+            })
+            setExpandedChapterId((prev) => (prev === deletedId ? null : prev))
+          }}
         />
       </div>
     </div>

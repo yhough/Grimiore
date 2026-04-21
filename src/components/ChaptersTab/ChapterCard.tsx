@@ -1,7 +1,7 @@
 'use client'
 
 import { mockChapters, MOCK_BOOK_ID } from '@/lib/mock-data'
-import { AlertTriangle, Edit3, Info, PenLine, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, Edit3, Info, PenLine, Trash2, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 type Chapter = typeof mockChapters[0]
@@ -19,6 +19,7 @@ interface Props {
   onToggle: () => void
   onResolveViaChat?: (message: string, flagId: string) => void
   onRequestUpload?: (number: number, title: string) => void
+  onDeleted?: (chapterId: string) => void
 }
 
 function formatDate(date: Date) {
@@ -83,13 +84,15 @@ function StatusBadge({ chapter }: { chapter: Chapter }) {
   )
 }
 
-export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveViaChat, onRequestUpload }: Props) {
+export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveViaChat, onRequestUpload, onDeleted }: Props) {
   const isMock = bookId === MOCK_BOOK_ID
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [addingNote, setAddingNote] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [saving, setSaving] = useState(false)
   const [showAllNotes, setShowAllNotes] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const unresolvedFlags = chapter.flags.filter((f) => !f.resolved)
@@ -147,10 +150,52 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
     } catch { /* silent */ }
   }
 
+  async function handleDelete() {
+    if (isMock) { setConfirmDelete(false); return }
+    setDeleting(true)
+    try {
+      await fetch(`/api/books/${bookId}/chapters/${chapter.id}`, { method: 'DELETE' })
+      onDeleted?.(chapter.id)
+    } catch { /* silent */ } finally {
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
+
   const showNotesSection = annotations.length > 0 || addingNote
 
   return (
-    <div style={{ backgroundColor: 'hsl(var(--grimm-surface))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 10, overflow: 'hidden' }}>
+    <div style={{ backgroundColor: 'hsl(var(--grimm-surface))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+
+      {/* ── Delete confirmation overlay ── */}
+      {confirmDelete && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'hsl(var(--grimm-surface) / 0.95)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10 }}>
+          <div style={{ textAlign: 'center', padding: '0 32px' }}>
+            <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
+              Delete &ldquo;{chapter.title}&rdquo;?
+            </p>
+            <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
+              This will remove the chapter and shift subsequent chapter numbers down.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', border: '0.5px solid hsl(var(--grimm-border))', padding: '6px 16px', borderRadius: 6, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <X size={11} /> Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ backgroundColor: 'hsl(var(--grimm-danger))', color: '#fff', border: 'none', padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <Trash2 size={11} /> {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div
@@ -178,6 +223,17 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
             size={14}
             style={{ color: isExpanded ? 'hsl(var(--grimm-muted))' : 'transparent', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 200ms ease' }}
           />
+          {!isMock && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmDelete(true) }}
+              title="Delete chapter"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'hsl(var(--grimm-muted))', display: 'flex', alignItems: 'center', borderRadius: 4, opacity: 0.5, transition: 'opacity 150ms ease, color 150ms ease' }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'hsl(var(--grimm-danger))' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = 'hsl(var(--grimm-muted))' }}
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
           <svg
             width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
             style={{ color: 'hsl(var(--grimm-muted))', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 200ms ease', flexShrink: 0 }}
