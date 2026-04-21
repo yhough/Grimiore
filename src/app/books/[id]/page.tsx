@@ -954,6 +954,18 @@ function ChaptersTab({
             })
             setExpandedChapterId((prev) => (prev === deletedId ? null : prev))
           }}
+          onNumberChanged={(changedId, newNumber) => {
+            setChapters((prev) => {
+              const changed = prev.find((c) => c.id === changedId)
+              if (!changed) return prev
+              const oldNumber = changed.number
+              return prev.map((c) => {
+                if (c.id === changedId) return { ...c, number: newNumber }
+                if (c.number === newNumber) return { ...c, number: oldNumber } // swap
+                return c
+              })
+            })
+          }}
         />
       </div>
     </div>

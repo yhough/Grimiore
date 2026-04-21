@@ -18,6 +18,7 @@ interface Props {
   onRequestUpload?: (number: number, title: string) => void
   onScrollToUpload?: () => void
   onChapterDeleted?: (chapterId: string) => void
+  onNumberChanged?: (chapterId: string, newNumber: number) => void
 }
 
 export function ChapterList({
@@ -31,6 +32,7 @@ export function ChapterList({
   onRequestUpload,
   onScrollToUpload,
   onChapterDeleted,
+  onNumberChanged,
 }: Props) {
   const processedCount = chapters.filter((c) => c.processed).length
 
@@ -134,6 +136,7 @@ export function ChapterList({
             onResolveViaChat={onResolveViaChat}
             onRequestUpload={onRequestUpload}
             onDeleted={onChapterDeleted}
+            onNumberChanged={onNumberChanged}
           />
         ))}
       </div>

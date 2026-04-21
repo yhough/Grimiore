@@ -20,6 +20,7 @@ interface Props {
   onResolveViaChat?: (message: string, flagId: string) => void
   onRequestUpload?: (number: number, title: string) => void
   onDeleted?: (chapterId: string) => void
+  onNumberChanged?: (chapterId: string, newNumber: number) => void
 }
 
 function formatDate(date: Date) {
@@ -84,7 +85,7 @@ function StatusBadge({ chapter }: { chapter: Chapter }) {
   )
 }
 
-export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveViaChat, onRequestUpload, onDeleted }: Props) {
+export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveViaChat, onRequestUpload, onDeleted, onNumberChanged }: Props) {
   const isMock = bookId === MOCK_BOOK_ID
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [addingNote, setAddingNote] = useState(false)
@@ -93,6 +94,9 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
   const [showAllNotes, setShowAllNotes] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [editingNumber, setEditingNumber] = useState(false)
+  const [numberDraft, setNumberDraft] = useState('')
+  const numberInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const unresolvedFlags = chapter.flags.filter((f) => !f.resolved)
@@ -162,6 +166,28 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
     }
   }
 
+  function startEditNumber(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (isMock) return
+    setNumberDraft(String(chapter.number))
+    setEditingNumber(true)
+    setTimeout(() => { numberInputRef.current?.select() }, 30)
+  }
+
+  async function saveNumber() {
+    const n = parseInt(numberDraft, 10)
+    if (!n || n < 1 || n === chapter.number) { setEditingNumber(false); return }
+    setEditingNumber(false)
+    try {
+      await fetch(`/api/books/${bookId}/chapters/${chapter.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: n }),
+      })
+      onNumberChanged?.(chapter.id, n)
+    } catch { /* silent */ }
+  }
+
   const showNotesSection = annotations.length > 0 || addingNote
 
   return (
@@ -205,9 +231,31 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
         className="hover:bg-grimm-surface-raised"
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 4, flexShrink: 0 }}>
-            Ch. {String(chapter.number).padStart(2, '0')}
-          </span>
+          {editingNumber ? (
+            <input
+              ref={numberInputRef}
+              type="number"
+              min={1}
+              value={numberDraft}
+              onChange={(e) => setNumberDraft(e.target.value)}
+              onBlur={saveNumber}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveNumber()
+                if (e.key === 'Escape') setEditingNumber(false)
+                e.stopPropagation()
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: 52, backgroundColor: 'hsl(var(--grimm-surface))', border: '1px solid hsl(var(--grimm-accent))', color: 'hsl(var(--grimm-text))', fontSize: 11, fontWeight: 500, padding: '2px 6px', borderRadius: 4, outline: 'none', flexShrink: 0 }}
+            />
+          ) : (
+            <span
+              onClick={startEditNumber}
+              title={isMock ? undefined : 'Click to edit chapter number'}
+              style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 4, flexShrink: 0, cursor: isMock ? 'default' : 'text', userSelect: 'none' }}
+            >
+              Ch. {String(chapter.number).padStart(2, '0')}
+            </span>
+          )}
           <span style={{ color: 'hsl(var(--grimm-text))', fontSize: 15, fontFamily: 'var(--font-playfair)' }}>
             {chapter.title}
           </span>
