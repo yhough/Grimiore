@@ -194,11 +194,31 @@ export async function POST(
       )
       .all(params.id, number) as Array<{ number: number; title: string; summary: string | null }>
 
+    // Fetch content excerpts from ALL previous chapters (not just done) for duplicate detection.
+    // We use the opening words of every chapter + closing words of the immediately preceding one.
+    const allPreviousContent = db
+      .prepare(
+        `SELECT number, title, content FROM chapters
+         WHERE book_id = ? AND id != ? AND content != ''
+         ORDER BY number ASC`
+      )
+      .all(params.id, finalChapterId) as Array<{ number: number; title: string; content: string }>
+
+    const prevChapterNumber = number - 1
+    const previousExcerpts = allPreviousContent.map((ch) => ({
+      number: ch.number,
+      title: ch.title,
+      opening: firstWords(ch.content, 60),
+      // Include a larger closing excerpt for the immediately preceding chapter
+      closing: lastWords(ch.content, ch.number === prevChapterNumber ? 120 : 40),
+    }))
+
     const systemPrompt = buildChapterSystemPrompt({
       book,
       stateEntries,
       characters,
       previousChapters,
+      previousExcerpts,
     })
 
     // Call Claude
@@ -433,7 +453,7 @@ interface ChapterAnalysis {
   continuity_flags: Array<{
     description: string
     severity: 'error' | 'warning' | 'info'
-    category: 'continuity' | 'character' | 'narrative'
+    category: 'continuity' | 'character' | 'narrative' | 'duplicate'
   }>
   timeline_events: Array<{
     title: string
@@ -450,8 +470,9 @@ function buildChapterSystemPrompt(params: {
   stateEntries: Array<{ type: string; name: string; summary: string | null; data: string }>
   characters: Array<{ name: string; role: string; description: string | null; status: string }>
   previousChapters: Array<{ number: number; title: string; summary: string | null }>
+  previousExcerpts: Array<{ number: number; title: string; opening: string; closing: string }>
 }): string {
-  const { book, stateEntries, characters, previousChapters } = params
+  const { book, stateEntries, characters, previousChapters, previousExcerpts } = params
 
   const charBlock = characters.length > 0
     ? 'KNOWN CHARACTERS:\n' + characters.map((c) =>
@@ -471,9 +492,18 @@ function buildChapterSystemPrompt(params: {
       ).join('\n')
     : ''
 
-  const context = [charBlock, loreBlock, prevBlock].filter(Boolean).join('\n\n')
+  const excerptBlock = previousExcerpts.length > 0
+    ? 'PREVIOUS CHAPTER CONTENT FINGERPRINTS (for duplicate/overlap detection):\n' +
+      previousExcerpts.map((e) =>
+        `  Ch. ${e.number} — "${e.title}"\n` +
+        `    Opening: "${e.opening}"\n` +
+        `    Closing: "${e.closing}"`
+      ).join('\n')
+    : ''
 
-  return `You are Grimm, an AI writing companion. Analyze the provided chapter and return a structured JSON object.
+  const context = [charBlock, loreBlock, prevBlock, excerptBlock].filter(Boolean).join('\n\n')
+
+  return `You are Fief, an AI writing companion. Analyze the provided chapter and return a structured JSON object.
 
 BOOK: ${book.title}
 GENRE: ${book.genre}${book.logline ? '\nLOGLINE: ' + book.logline : ''}${book.premise ? '\nPREMISE: ' + book.premise : ''}${book.protagonist_name ? '\nPROTAGONIST: ' + book.protagonist_name : ''}
@@ -507,7 +537,7 @@ Respond ONLY with valid JSON — no markdown fences, no commentary:
     {
       "description": "clear description of the issue",
       "severity": "error" | "warning" | "info",
-      "category": "continuity" | "character" | "narrative"
+      "category": "continuity" | "character" | "narrative" | "duplicate"
     }
   ],
   "timeline_events": [
@@ -522,9 +552,25 @@ Respond ONLY with valid JSON — no markdown fences, no commentary:
 
 Rules:
 - continuity_flags severity: "error" = direct contradiction with established facts; "warning" = possible inconsistency or notable concern; "info" = minor observation
-- continuity_flags category: "continuity" = factual contradiction (wrong location, impossible timeline, dead character reappears, etc.); "character" = character acts against their established personality, motivation, or arc; "narrative" = unexplained gap in logic, missing cause-and-effect, pacing issue, or plot hole
+- continuity_flags category:
+  "continuity" = factual contradiction (wrong location, impossible timeline, dead character reappears, etc.)
+  "character" = character acts against their established personality, motivation, or arc
+  "narrative" = unexplained gap in logic, missing cause-and-effect, pacing issue, or plot hole
+  "duplicate" = content that is repeated verbatim or near-verbatim from a previous chapter OR repeated within this chapter itself; use severity "error" if the entire chapter appears to be a duplicate of a previous one, "warning" for a repeated scene or passage
+- For duplicate detection: compare this chapter's opening and body against the PREVIOUS CHAPTER CONTENT FINGERPRINTS provided. Also scan within this chapter for any scenes, paragraphs, or passages that appear more than once.
 - Only flag real issues — don't invent problems
 - Only include characters who actually appear in this chapter
 - Only include state_updates for newly established facts or significant updates
 - Keep the summary grounded in what actually happens in the chapter`
+}
+
+// Extract the first N words from a body of text
+function firstWords(text: string, n: number): string {
+  return text.trim().split(/\s+/).slice(0, n).join(' ')
+}
+
+// Extract the last N words from a body of text
+function lastWords(text: string, n: number): string {
+  const words = text.trim().split(/\s+/)
+  return words.slice(Math.max(0, words.length - n)).join(' ')
 }

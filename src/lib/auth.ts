@@ -1,0 +1,52 @@
+import { db } from '@/db'
+import { cookies } from 'next/headers'
+import { nanoid } from 'nanoid'
+
+const COOKIE_NAME = 'auth_session'
+const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+
+export type SessionUser = {
+  id: string
+  name: string
+  email: string
+}
+
+export function createSession(userId: string): string {
+  const token = nanoid(48)
+  const now = Date.now()
+  db.prepare(`
+    INSERT INTO sessions (token, user_id, expires_at, created_at)
+    VALUES (?, ?, ?, ?)
+  `).run(token, userId, now + SESSION_DURATION_MS, now)
+  return token
+}
+
+export function deleteSession(token: string) {
+  db.prepare(`DELETE FROM sessions WHERE token = ?`).run(token)
+}
+
+export function getSessionUser(token: string): SessionUser | null {
+  const row = db.prepare(`
+    SELECT u.id, u.name, u.email
+    FROM sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.token = ? AND s.expires_at > ?
+  `).get(token, Date.now()) as SessionUser | undefined
+  return row ?? null
+}
+
+export async function getCurrentUser(): Promise<SessionUser | null> {
+  const token = cookies().get(COOKIE_NAME)?.value
+  if (!token) return null
+  return getSessionUser(token)
+}
+
+export function setSessionCookie(token: string): string {
+  const maxAge = SESSION_DURATION_MS / 1000
+  return `${COOKIE_NAME}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}`
+}
+
+export function clearSessionCookie(): string {
+  return `${COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`
+}
+

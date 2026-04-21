@@ -374,6 +374,13 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
                     const isError = flag.severity === 'error'
 
                     const flagStyle = (() => {
+                      if (cat === 'duplicate') return {
+                        bg: 'hsl(var(--grimm-warn-duplicate) / 0.12)',
+                        border: 'hsl(var(--grimm-warn-duplicate))',
+                        color: 'hsl(var(--grimm-warn-duplicate))',
+                        label: isError ? 'Duplicate chapter' : 'Repeated content',
+                        icon: <AlertTriangle size={12} style={{ color: 'hsl(var(--grimm-warn-duplicate))', flexShrink: 0 }} />,
+                      }
                       if (cat === 'character') return {
                         bg: 'hsl(var(--grimm-warn-char) / 0.12)',
                         border: 'hsl(var(--grimm-warn-char))',

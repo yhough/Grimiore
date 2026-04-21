@@ -4,9 +4,10 @@ import { BookCard } from '@/components/BookCard'
 import { useTheme } from '@/hooks/useTheme'
 import { mockBook, MOCK_BOOK_ID } from '@/lib/mock-data'
 import type { Book } from '@/types'
-import { BookOpen, Clock, Home, Library, Moon, Plus, Search, Settings, Sparkles, Sun, X } from 'lucide-react'
+import { BookOpen, Clock, Home, Library, LogOut, Moon, Plus, Search, Sparkles, Sun, X } from 'lucide-react'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const MOCK_BOOK_CARD: Book = {
@@ -25,13 +26,22 @@ const MOCK_BOOK_CARD: Book = {
 
 type Tab = 'home' | 'library'
 
+type User = { id: string; name: string; email: string }
+
 export default function HomePage() {
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('home')
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null)
   const { dark, toggle: toggleTheme } = useTheme()
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((d) => { if (d.user) setUser(d.user) })
+      .catch(() => {})
+
     fetch('/api/books')
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status}`)
@@ -41,6 +51,11 @@ export default function HomePage() {
       .catch(() => setBooks([]))
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
 
   function handleDelete(id: string) {
     fetch(`/api/books/${id}`, { method: 'DELETE' }).then(() =>
@@ -55,7 +70,7 @@ export default function HomePage() {
         {/* Logo */}
         <div className="h-14 flex items-center gap-2 px-4 border-b border-border">
           <Sparkles size={15} className="text-primary" />
-          <span className="text-foreground text-xl" style={{ fontFamily: 'Lumos' }}>Grimm</span>
+          <span className="text-foreground text-xl" style={{ fontFamily: 'Lumos' }}>Fief</span>
         </div>
 
         {/* Nav */}
@@ -98,37 +113,37 @@ export default function HomePage() {
 
         {/* User profile */}
         <div className="p-3 border-t border-border">
-          <Link
-            href="/login"
-            className="flex items-center gap-2.5 px-1 py-1 rounded-md group hover:bg-muted transition-colors"
-          >
+          <div className="flex items-center gap-2.5 px-1 py-1 rounded-md">
             <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
               <span className="text-primary text-xs font-semibold" style={{ fontFamily: 'var(--font-geist-sans)' }}>
-                Y
+                {user?.name?.[0]?.toUpperCase() ?? '?'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground leading-tight truncate">Yaelin</p>
+              <p className="text-sm font-medium text-foreground leading-tight truncate">{user?.name ?? '—'}</p>
               <p className="text-xs text-muted-foreground leading-tight truncate">Free plan</p>
             </div>
             <button
-              onClick={(e) => { e.preventDefault(); toggleTheme() }}
+              onClick={toggleTheme}
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
               className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground/50 hover:text-muted-foreground"
             >
               {dark ? <Sun size={13} /> : <Moon size={13} />}
             </button>
-            <Settings
-              size={13}
-              className="text-muted-foreground/50 group-hover:text-muted-foreground transition-colors shrink-0"
-            />
-          </Link>
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground/50 hover:text-muted-foreground"
+            >
+              <LogOut size={13} />
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        {tab === 'home' && <HomeTab books={books} loading={loading} />}
+        {tab === 'home' && <HomeTab books={books} loading={loading} userName={user?.name} />}
         {tab === 'library' && <LibraryTab books={books} loading={loading} onDelete={handleDelete} />}
       </main>
     </div>
@@ -137,7 +152,7 @@ export default function HomePage() {
 
 // ── Home tab ──────────────────────────────────────────────────────────────────
 
-function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
+function HomeTab({ books, loading, userName }: { books: Book[]; loading: boolean; userName?: string }) {
   const recent = [MOCK_BOOK_CARD, ...books].slice(0, 4)
   const hasUserBooks = books.length > 0
 
@@ -145,7 +160,7 @@ function HomeTab({ books, loading }: { books: Book[]; loading: boolean }) {
     <div className="px-8 py-12">
       <div className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight" style={{ fontFamily: 'Lumos' }}>
-          Welcome back, Yaelin.
+          Welcome back{userName ? `, ${userName}` : ''}.
         </h1>
         <p className="text-muted-foreground mt-2">
           Pick up where you left off, or start something new.
@@ -265,7 +280,7 @@ function EmptyState() {
       </div>
       <h2 className="text-base font-semibold mb-1">No books yet</h2>
       <p className="text-muted-foreground text-sm max-w-xs mb-5">
-        Start a new book and Grimm will help you build its world, track characters, and keep everything consistent.
+        Start a new book and Fief will help you build its world, track characters, and keep everything consistent.
       </p>
       <Link
         href="/books/new"

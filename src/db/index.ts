@@ -128,6 +128,23 @@ function createDb(): Database.Database {
     );
   `)
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+  `)
+
   // Non-destructive migrations
   try { sqlite.exec(`ALTER TABLE books ADD COLUMN cover_image TEXT`) } catch { /* already exists */ }
   try { sqlite.exec(`ALTER TABLE timeline_events ADD COLUMN category TEXT NOT NULL DEFAULT 'history'`) } catch { /* already exists */ }
