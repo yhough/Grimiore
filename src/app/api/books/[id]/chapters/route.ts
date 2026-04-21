@@ -120,26 +120,25 @@ export async function POST(
     const chapterId = generateId()
     const wordCount = content.trim().split(/\s+/).length
 
-    // Upsert the chapter (create or replace if same number exists)
+    // Reject duplicate chapter numbers
     const existing = db.prepare(
       'SELECT id FROM chapters WHERE book_id = ? AND number = ?'
     ).get(params.id, number) as { id: string } | undefined
 
-    const finalChapterId = existing?.id ?? chapterId
-
     if (existing) {
-      db.prepare(
-        `UPDATE chapters SET title = ?, content = ?, word_count = ?,
-         processing_status = 'processing', processing_step = 'Analyzing with AI',
-         updated_at = ? WHERE id = ?`
-      ).run(title.trim(), content.trim(), wordCount, now, existing.id)
-    } else {
-      db.prepare(
-        `INSERT INTO chapters (id, book_id, number, title, content, word_count,
-         processing_status, processing_step, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'processing', 'Analyzing with AI', ?, ?)`
-      ).run(finalChapterId, params.id, number, title.trim(), content.trim(), wordCount, now, now)
+      return NextResponse.json(
+        { error: `Chapter ${number} already exists. Delete it first or choose a different number.` },
+        { status: 409 }
+      )
     }
+
+    db.prepare(
+      `INSERT INTO chapters (id, book_id, number, title, content, word_count,
+       processing_status, processing_step, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'processing', 'Analyzing with AI', ?, ?)`
+    ).run(chapterId, params.id, number, title.trim(), content.trim(), wordCount, now, now)
+
+    const finalChapterId = chapterId
 
     // Fetch context for the AI
     const stateEntries = db

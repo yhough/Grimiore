@@ -251,7 +251,7 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
             <span
               onClick={startEditNumber}
               title={isMock ? undefined : 'Click to edit chapter number'}
-              style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 4, flexShrink: 0, cursor: isMock ? 'default' : 'text', userSelect: 'none' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 4, flexShrink: 0, cursor: isMock ? 'default' : 'text', userSelect: 'none' }}
             >
               Ch. {String(chapter.number).padStart(2, '0')}
             </span>

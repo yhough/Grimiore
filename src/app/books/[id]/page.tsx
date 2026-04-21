@@ -113,6 +113,7 @@ export default function BookPage({ params }: Props) {
             bookId={params.id}
             refreshKey={chaptersKey}
             onResolveViaChat={handleResolveViaChat}
+            onChapterReordered={() => setTimelineKey((k) => k + 1)}
           />
         )}
         {tab === 'timeline' && <TimelineTab bookId={params.id} refreshKey={timelineKey} />}
@@ -518,10 +519,12 @@ function ChaptersTab({
   bookId,
   refreshKey,
   onResolveViaChat,
+  onChapterReordered,
 }: {
   bookId: string
   refreshKey?: number
   onResolveViaChat?: (message: string, flagId: string) => void
+  onChapterReordered?: () => void
 }) {
   const isMock = bookId === MOCK_BOOK_ID
   const [uploadMode, setUploadMode] = useState<'paste' | 'file'>('paste')
@@ -965,6 +968,7 @@ function ChaptersTab({
                 return c
               })
             })
+            onChapterReordered?.()
           }}
         />
       </div>
