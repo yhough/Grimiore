@@ -199,38 +199,37 @@ export function ChapterCard({ chapter, bookId, isExpanded, onToggle, onResolveVi
 
   const showNotesSection = annotations.length > 0 || addingNote
 
-  return (
-    <div style={{ backgroundColor: 'hsl(var(--grimm-surface))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
-
-      {/* ── Delete confirmation overlay ── */}
-      {confirmDelete && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'hsl(var(--grimm-surface) / 0.95)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10 }}>
-          <div style={{ textAlign: 'center', padding: '0 32px' }}>
-            <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
-              Delete &ldquo;{chapter.title}&rdquo;?
-            </p>
-            <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
-              This will remove the chapter and shift subsequent chapter numbers down.
-            </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                disabled={deleting}
-                style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', border: '0.5px solid hsl(var(--grimm-border))', padding: '6px 16px', borderRadius: 6, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-              >
-                <X size={11} /> Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{ backgroundColor: 'hsl(var(--grimm-danger))', color: '#fff', border: 'none', padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-              >
-                <Trash2 size={11} /> {deleting ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
+  if (confirmDelete) {
+    return (
+      <div style={{ backgroundColor: 'hsl(var(--grimm-surface))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 10, padding: '24px 32px', textAlign: 'center' }}>
+        <p style={{ color: 'hsl(var(--grimm-text))', fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
+          Delete &ldquo;{chapter.title}&rdquo;?
+        </p>
+        <p style={{ color: 'hsl(var(--grimm-muted))', fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
+          This will remove the chapter and shift subsequent chapter numbers down.
+        </p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <button
+            onClick={() => setConfirmDelete(false)}
+            disabled={deleting}
+            style={{ backgroundColor: 'hsl(var(--grimm-surface-raised))', color: 'hsl(var(--grimm-muted))', border: '0.5px solid hsl(var(--grimm-border))', padding: '6px 16px', borderRadius: 6, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+          >
+            <X size={11} /> Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            style={{ backgroundColor: 'hsl(var(--grimm-danger))', color: '#fff', border: 'none', padding: '6px 16px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+          >
+            <Trash2 size={11} /> {deleting ? 'Deleting…' : 'Delete'}
+          </button>
         </div>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ backgroundColor: 'hsl(var(--grimm-surface))', border: '0.5px solid hsl(var(--grimm-border))', borderRadius: 10, overflow: 'hidden' }}>
 
       {/* ── Header ── */}
       <div
