@@ -38,7 +38,7 @@ export default function BookPage({ params }: Props) {
   const [timelineKey, setTimelineKey] = useState(0)
   const [pendingResolveFlagId, setPendingResolveFlagId] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
-  const [bookDetails, setBookDetails] = useState<{ title: string; genre: string; premise: string | null } | null>(null)
+  const [bookDetails, setBookDetails] = useState<{ title: string; genre: string; premise: string | null; cover_image: string | null } | null>(null)
   const { dark, toggle: toggleTheme } = useTheme()
 
   const isMockBook = params.id === MOCK_BOOK_ID
@@ -47,7 +47,7 @@ export default function BookPage({ params }: Props) {
     if (isMockBook) return
     fetch(`/api/books/${params.id}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((b) => b && setBookDetails({ title: b.title, genre: b.genre, premise: b.premise }))
+      .then((b) => b && setBookDetails({ title: b.title, genre: b.genre, premise: b.premise, cover_image: b.cover_image ?? null }))
       .catch(() => {})
   }, [params.id, isMockBook])
 
@@ -120,7 +120,7 @@ export default function BookPage({ params }: Props) {
         bookId={params.id}
         initial={bookDetails}
         onClose={() => setDetailsOpen(false)}
-        onSaved={(updated) => setBookDetails(updated)}
+        onSaved={(updated) => setBookDetails({ ...updated, cover_image: updated.cover_image ?? null })}
       />
 
       {/* Tab content — fills remaining height, no outer scroll */}
