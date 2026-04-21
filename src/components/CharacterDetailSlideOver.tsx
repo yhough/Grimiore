@@ -1,6 +1,6 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { MessageSquare, Pencil, X } from 'lucide-react'
 import { useEffect } from 'react'
 
 export interface CharacterFull {
@@ -30,9 +30,10 @@ const STATUS_DOT: Record<string, string> = {
 interface Props {
   character: CharacterFull | null
   onClose: () => void
+  onEditInChat?: (message: string) => void
 }
 
-export function CharacterDetailSlideOver({ character, onClose }: Props) {
+export function CharacterDetailSlideOver({ character, onClose, onEditInChat }: Props) {
   useEffect(() => {
     if (!character) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -88,7 +89,7 @@ export function CharacterDetailSlideOver({ character, onClose }: Props) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-6">
+        <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-6 min-h-0">
           {/* Description */}
           {character.description && (
             <section>
@@ -159,6 +160,20 @@ export function CharacterDetailSlideOver({ character, onClose }: Props) {
             </section>
           )}
         </div>
+
+        {/* Footer */}
+        {onEditInChat && (
+          <div className="px-5 py-3 border-t border-border shrink-0">
+            <button
+              onClick={() => { onEditInChat(`I'd like to update "${character.name}": `); onClose() }}
+              className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <MessageSquare size={13} />
+              <Pencil size={11} className="opacity-50" />
+              Edit in chat
+            </button>
+          </div>
+        )}
       </div>
     </>
   )

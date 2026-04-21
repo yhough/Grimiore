@@ -107,7 +107,13 @@ export default function BookPage({ params }: Props) {
             onCorrectionApplied={handleCorrectionApplied}
           />
         )}
-        {tab === 'characters' && <CharactersTab bookId={params.id} refreshKey={charactersKey} />}
+        {tab === 'characters' && (
+          <CharactersTab
+            bookId={params.id}
+            refreshKey={charactersKey}
+            onEditInChat={(msg) => { setPreFillMessage(msg); setTab('world') }}
+          />
+        )}
         {tab === 'chapters' && (
           <ChaptersTab
             bookId={params.id}
@@ -403,7 +409,7 @@ function WorldTab({
 
 // ── Characters tab ────────────────────────────────────────────────────────────
 
-function CharactersTab({ bookId, refreshKey }: { bookId: string; refreshKey?: number }) {
+function CharactersTab({ bookId, refreshKey, onEditInChat }: { bookId: string; refreshKey?: number; onEditInChat?: (message: string) => void }) {
   const isMock = bookId === MOCK_BOOK_ID
   const [characters, setCharacters] = useState<CharacterFull[]>(isMock ? mockCharacters : [])
   const [selected, setSelected] = useState<CharacterFull | null>(null)
@@ -494,6 +500,7 @@ function CharactersTab({ bookId, refreshKey }: { bookId: string; refreshKey?: nu
       <CharacterDetailSlideOver
         character={selected}
         onClose={() => setSelected(null)}
+        onEditInChat={onEditInChat}
       />
     </>
   )
