@@ -489,43 +489,8 @@ function CharactersTab({ bookId, refreshKey, onEditInChat }: { bookId: string; r
     setRelationships((prev) => prev.filter((r) => r.id !== id))
   }
 
-  async function handleAddRelationship(data: {
-    character_a_id: string; character_b_id: string; type: string
-    status: string; strength: number; description: string
-  }) {
-    if (isMock) {
-      const charA = characters.find((c) => c.id === data.character_a_id)
-      const charB = characters.find((c) => c.id === data.character_b_id)
-      const newRel: RelationshipWithNames = {
-        id: `mock-rel-${Date.now()}`,
-        book_id: bookId,
-        character_a_id: data.character_a_id,
-        character_b_id: data.character_b_id,
-        type: data.type as RelationshipWithNames['type'],
-        status: data.status as RelationshipWithNames['status'],
-        strength: data.strength,
-        description: data.description || null,
-        created_at: Date.now(),
-        updated_at: Date.now(),
-        character_a_name: charA?.name,
-        character_a_role: charA?.role,
-        character_b_name: charB?.name,
-        character_b_role: charB?.role,
-      }
-      setRelationships((prev) => [...prev, newRel])
-      return
-    }
-    const res = await fetch(`/api/books/${bookId}/relationships`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({})) as { error?: string }
-      throw new Error(err.error ?? 'Failed to create')
-    }
-    const created = await res.json() as RelationshipWithNames
-    setRelationships((prev) => [...prev, created])
+  function handleAddViaChat(message: string) {
+    onEditInChat?.(message)
   }
 
   const ROLE_ORDER: Record<string, number> = { protagonist: 0, antagonist: 1, supporting: 2, minor: 3 }
@@ -646,8 +611,7 @@ function CharactersTab({ bookId, refreshKey, onEditInChat }: { bookId: string; r
         open={addModalOpen}
         characters={characters}
         onClose={() => setAddModalOpen(false)}
-        onSubmit={handleAddRelationship}
-        isMock={isMock}
+        onAddViaChat={handleAddViaChat}
       />
     </>
   )

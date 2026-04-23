@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { X, MessageSquare } from 'lucide-react'
 import type { CharacterFull } from './CharacterDetailSlideOver'
 
 const REL_TYPES = ['ally', 'enemy', 'neutral', 'romantic', 'family', 'mentor', 'rival', 'unknown'] as const
@@ -22,26 +22,44 @@ interface Props {
   open: boolean
   characters: CharacterFull[]
   onClose: () => void
-  onSubmit: (data: {
-    character_a_id: string
-    character_b_id: string
-    type: string
-    status: string
-    strength: number
-    description: string
-  }) => Promise<void>
-  isMock: boolean
+  onAddViaChat: (message: string) => void
 }
 
-export function AddRelationshipModal({ open, characters, onClose, onSubmit, isMock }: Props) {
+function buildChatMessage(
+  nameA: string,
+  nameB: string,
+  type: string,
+  status: string,
+  strength: number,
+  description: string
+): string {
+  const typeLabel = TYPE_LABELS[type]?.toLowerCase() ?? type
+  const statusLabel = STATUS_LABELS[status]?.toLowerCase() ?? status
+
+  const parts: string[] = [
+    `Establish that ${nameA} and ${nameB} share a ${typeLabel} relationship (strength ${strength}/5, ${statusLabel}).`,
+  ]
+  if (description.trim()) parts.push(description.trim())
+  return parts.join(' ')
+}
+
+export function AddRelationshipModal({ open, characters, onClose, onAddViaChat }: Props) {
   const [charA, setCharA] = useState('')
   const [charB, setCharB] = useState('')
   const [type, setType] = useState<string>('unknown')
   const [status, setStatus] = useState<string>('unknown')
   const [strength, setStrength] = useState(1)
   const [description, setDescription] = useState('')
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const charMap = useMemo(() => new Map(characters.map((c) => [c.id, c])), [characters])
+
+  const preview = useMemo(() => {
+    const a = charMap.get(charA)
+    const b = charMap.get(charB)
+    if (!a || !b) return null
+    return buildChatMessage(a.name, b.name, type, status, strength, description)
+  }, [charA, charB, type, status, strength, description, charMap])
 
   function reset() {
     setCharA(''); setCharB(''); setType('unknown'); setStatus('unknown')
@@ -50,22 +68,15 @@ export function AddRelationshipModal({ open, characters, onClose, onSubmit, isMo
 
   function handleClose() { reset(); onClose() }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!charA) { setError('Select the first character.'); return }
     if (!charB) { setError('Select the second character.'); return }
     if (charA === charB) { setError('A character cannot relate to itself.'); return }
-    setError('')
-    setSaving(true)
-    try {
-      await onSubmit({ character_a_id: charA, character_b_id: charB, type, status, strength, description })
-      reset()
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
-    } finally {
-      setSaving(false)
-    }
+    if (!preview) return
+    onAddViaChat(preview)
+    reset()
+    onClose()
   }
 
   if (!open) return null
@@ -79,8 +90,11 @@ export function AddRelationshipModal({ open, characters, onClose, onSubmit, isMo
       <div className="relative z-10 w-full max-w-md bg-card border border-border rounded-xl shadow-xl mx-4">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-semibold text-foreground">Add relationship</h2>
-          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Add relationship via chat</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Claude will establish it through the world chat to maintain continuity.</p>
+          </div>
+          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition-colors ml-4 shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -114,21 +128,13 @@ export function AddRelationshipModal({ open, characters, onClose, onSubmit, isMo
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Type</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className={inputCls}
-              >
+              <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
                 {REL_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className={inputCls}
-              >
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
                 {REL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
             </div>
@@ -169,22 +175,26 @@ export function AddRelationshipModal({ open, characters, onClose, onSubmit, isMo
             />
           </div>
 
-          {error && <p className="text-sm text-destructive -mt-1">{error}</p>}
-
-          {isMock && (
-            <p className="text-xs text-muted-foreground/60 italic">
-              Demo mode — relationships won't be saved.
-            </p>
+          {/* Chat preview */}
+          {preview && (
+            <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-1.5">
+                Will be sent to chat
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed italic">"{preview}"</p>
+            </div>
           )}
+
+          {error && <p className="text-sm text-destructive -mt-1">{error}</p>}
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-1">
             <button
               type="submit"
-              disabled={saving}
-              className="flex-1 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-1.5 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             >
-              {saving ? 'Adding…' : 'Add relationship'}
+              <MessageSquare size={13} />
+              Add via chat
             </button>
             <button
               type="button"

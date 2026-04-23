@@ -176,7 +176,7 @@ export function RelationshipMap({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
         >
           <Plus size={12} />
-          Add relationship
+          Add via chat
         </button>
       </div>
     )
@@ -310,7 +310,7 @@ export function RelationshipMap({
         className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-card/90 border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted shadow-sm backdrop-blur-sm transition-colors"
       >
         <Plus size={11} />
-        Add
+        Add via chat
       </button>
 
       {/* Legend */}
