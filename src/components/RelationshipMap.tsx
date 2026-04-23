@@ -161,26 +161,7 @@ export function RelationshipMap({
   const vbX = (VW - vbW) / 2
   const vbY = (VH - vbH) / 2
 
-  // ── Empty state ─────────────────────────────────────────────────────────────
-  if (relationships.length === 0) {
-    return (
-      <div className="relative h-[420px] rounded-xl border border-border bg-card flex flex-col items-center justify-center gap-4">
-        <div className="text-center max-w-xs">
-          <p className="text-sm font-medium text-foreground mb-1">No relationships yet</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Relationships appear automatically as you build the world in chat, or you can add one manually.
-          </p>
-        </div>
-        <button
-          onClick={onAddClick}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus size={12} />
-          Add via chat
-        </button>
-      </div>
-    )
-  }
+  const hasRelationships = relationships.length > 0
 
   // ── Graph ────────────────────────────────────────────────────────────────────
   return (
@@ -313,8 +294,27 @@ export function RelationshipMap({
         Add via chat
       </button>
 
-      {/* Legend */}
-      <div className="absolute bottom-3 left-3 bg-card/90 border border-border rounded-lg px-3 py-2.5 shadow-sm backdrop-blur-sm">
+      {/* No-relationships overlay — shown over the node graph */}
+      {!hasRelationships && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/60 backdrop-blur-[2px]">
+          <div className="text-center max-w-xs">
+            <p className="text-sm font-medium text-foreground mb-1">No relationships yet</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Relationships appear automatically as you build the world in chat.
+            </p>
+          </div>
+          <button
+            onClick={onAddClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus size={12} />
+            Add via chat
+          </button>
+        </div>
+      )}
+
+      {/* Legend — only shown when there are relationships to decode */}
+      {hasRelationships && <div className="absolute bottom-3 left-3 bg-card/90 border border-border rounded-lg px-3 py-2.5 shadow-sm backdrop-blur-sm">
         <p className="text-[9px] font-semibold tracking-widest uppercase text-muted-foreground/60 mb-2">
           Relationship type
         </p>
@@ -352,7 +352,7 @@ export function RelationshipMap({
             ))}
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
