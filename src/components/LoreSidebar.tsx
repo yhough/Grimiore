@@ -29,6 +29,7 @@ interface LoreData {
 
 export interface LoreSidebarHandle {
   refetch: () => void
+  openEntry: (id: string) => void
 }
 
 interface Props {
@@ -54,7 +55,27 @@ export const LoreSidebar = forwardRef<LoreSidebarHandle, Props>(function LoreSid
   }
 
   useEffect(() => { fetchLore() }, [bookId])
-  useImperativeHandle(ref, () => ({ refetch: fetchLore }))
+
+  function openEntry(id: string) {
+    const all = data
+      ? [...data.sections.characters, ...data.sections.locations, ...data.sections.factions, ...data.sections.magic, ...data.sections.misc]
+      : []
+    const entry = all.find((e) => e.id === id)
+    if (entry) { setSelected(entry); return }
+    // Not loaded yet — refetch then open
+    if (mockData) return
+    fetch(`/api/books/${bookId}/lore`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: LoreData | null) => {
+        if (!d) return
+        setData(d)
+        const found = [...d.sections.characters, ...d.sections.locations, ...d.sections.factions, ...d.sections.magic, ...d.sections.misc].find((e) => e.id === id)
+        if (found) setSelected(found)
+      })
+      .catch(() => {})
+  }
+
+  useImperativeHandle(ref, () => ({ refetch: fetchLore, openEntry }))
 
   const activeSections = SECTIONS.filter(({ key, optional }) => {
     if (!optional) return true

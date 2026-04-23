@@ -13,10 +13,11 @@ import { BookDetailsSlideOver } from '@/components/BookDetailsSlideOver'
 import { TypingIndicator } from '@/components/TypingIndicator'
 import { WorldMessage, type WorldMessageData } from '@/components/WorldMessage'
 import { ExportModal } from '@/components/ExportModal'
+import { SearchModal, type SearchResult } from '@/components/SearchModal'
 import { mockBook, mockChapters, mockCharacters, mockLoreSections, mockMessages, mockProcessingSteps, mockRelationships, MOCK_BOOK_ID } from '@/lib/mock-data'
 import { useTheme } from '@/hooks/useTheme'
 import type { ChatMetadata } from '@/types'
-import { AlertTriangle, BookOpen, CheckCircle, ChevronLeft, ChevronRight, Download, Moon, Settings2, Sparkles, Sun, Upload, Zap } from 'lucide-react'
+import { AlertTriangle, BookOpen, CheckCircle, ChevronLeft, ChevronRight, Download, Moon, Search, Settings2, Sparkles, Sun, Upload, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -43,6 +44,10 @@ export default function BookPage({ params }: Props) {
   const [pendingResolveFlagId, setPendingResolveFlagId] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [jumpCharId, setJumpCharId] = useState<string | null>(null)
+  const [jumpLoreId, setJumpLoreId] = useState<string | null>(null)
+  const [jumpChapterId, setJumpChapterId] = useState<string | null>(null)
   const [bookDetails, setBookDetails] = useState<{ title: string; genre: string; premise: string | null; cover_image: string | null } | null>(null)
   const { dark, toggle: toggleTheme } = useTheme()
 
@@ -75,6 +80,35 @@ export default function BookPage({ params }: Props) {
     if (t === 'timeline') setTimelineKey((k) => k + 1)
   }
 
+  // Cmd+K / Ctrl+K opens search
+  useEffect(() => {
+    if (isMockBook) return
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen((o) => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isMockBook])
+
+  function handleSearchSelect(result: SearchResult) {
+    setSearchOpen(false)
+    if (result.type === 'character') {
+      handleTabChange('characters')
+      setJumpCharId(result.id)
+    } else if (['location', 'faction', 'magic', 'lore'].includes(result.type)) {
+      handleTabChange('world')
+      setJumpLoreId(result.id)
+    } else if (result.type === 'chapter') {
+      handleTabChange('chapters')
+      setJumpChapterId(result.id)
+    } else {
+      handleTabChange('timeline')
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Top nav */}
@@ -99,7 +133,7 @@ export default function BookPage({ params }: Props) {
                 {TAB_LABELS[t]}
               </button>
             ))}
-            <div className="w-px h-4 bg-border mx-1" />
+            <div className="w-px h-4 bg-border mx-2" />
             {!isMockBook && (
               <>
                 <button
@@ -143,6 +177,27 @@ export default function BookPage({ params }: Props) {
         onClose={() => setExportOpen(false)}
       />
 
+      <SearchModal
+        bookId={params.id}
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelect={handleSearchSelect}
+      />
+
+      {/* Search bar */}
+      {!isMockBook && (
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="shrink-0 w-full flex items-center gap-2.5 px-5 h-9 border-b border-border bg-background/60 hover:bg-muted/40 transition-colors text-left group"
+        >
+          <Search size={12} className="shrink-0 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
+          <span className="flex-1 text-xs text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">
+            Search characters, lore, chapters…
+          </span>
+          <kbd className="text-[10px] text-muted-foreground/30 font-mono">⌘K</kbd>
+        </button>
+      )}
+
       {/* Tab content — fills remaining height, no outer scroll */}
       <div className="flex-1 min-h-0">
         {tab === 'world' && (
@@ -156,6 +211,8 @@ export default function BookPage({ params }: Props) {
               setChaptersKey((k) => k + 1)
             }}
             onCorrectionApplied={handleCorrectionApplied}
+            jumpToLoreId={jumpLoreId}
+            onLoreJumpHandled={() => setJumpLoreId(null)}
           />
         )}
         {tab === 'characters' && (
@@ -163,6 +220,8 @@ export default function BookPage({ params }: Props) {
             bookId={params.id}
             refreshKey={charactersKey}
             onEditInChat={(msg) => { setPreFillMessage(msg); setTab('world') }}
+            jumpToCharId={jumpCharId}
+            onCharJumpHandled={() => setJumpCharId(null)}
           />
         )}
         {tab === 'chapters' && (
@@ -175,6 +234,8 @@ export default function BookPage({ params }: Props) {
               setCharactersKey((k) => k + 1)
               setTimelineKey((k) => k + 1)
             }}
+            jumpToChapterId={jumpChapterId}
+            onChapterJumpHandled={() => setJumpChapterId(null)}
           />
         )}
         {tab === 'timeline' && <TimelineTab bookId={params.id} refreshKey={timelineKey} />}
@@ -192,6 +253,8 @@ function WorldTab({
   pendingResolveFlagId,
   onFlagResolved,
   onCorrectionApplied,
+  jumpToLoreId,
+  onLoreJumpHandled,
 }: {
   bookId: string
   preFillMessage?: string | null
@@ -199,6 +262,8 @@ function WorldTab({
   pendingResolveFlagId?: string | null
   onFlagResolved?: () => void
   onCorrectionApplied?: () => void
+  jumpToLoreId?: string | null
+  onLoreJumpHandled?: () => void
 }) {
   const isMock = bookId === MOCK_BOOK_ID
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -227,6 +292,18 @@ function WorldTab({
       .then((msgs) => setMessages(msgs))
       .catch(() => {})
   }, [bookId, isMock])
+
+  // Open a specific lore entry when coming from search
+  useEffect(() => {
+    if (!jumpToLoreId) return
+    setSidebarOpen(true)
+    // Small delay to ensure sidebar is rendered after being opened
+    setTimeout(() => {
+      sidebarRef.current?.openEntry(jumpToLoreId)
+      onLoreJumpHandled?.()
+    }, 50)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToLoreId])
 
   // Scroll to bottom whenever messages change or typing indicator appears
   useEffect(() => {
@@ -464,7 +541,13 @@ function WorldTab({
 
 // ── Characters tab ────────────────────────────────────────────────────────────
 
-function CharactersTab({ bookId, refreshKey, onEditInChat }: { bookId: string; refreshKey?: number; onEditInChat?: (message: string) => void }) {
+function CharactersTab({ bookId, refreshKey, onEditInChat, jumpToCharId, onCharJumpHandled }: {
+  bookId: string
+  refreshKey?: number
+  onEditInChat?: (message: string) => void
+  jumpToCharId?: string | null
+  onCharJumpHandled?: () => void
+}) {
   const isMock = bookId === MOCK_BOOK_ID
   const [characters, setCharacters] = useState<CharacterFull[]>(isMock ? mockCharacters : [])
   const [relationships, setRelationships] = useState<RelationshipWithNames[]>(isMock ? mockRelationships : [])
@@ -489,6 +572,14 @@ function CharactersTab({ bookId, refreshKey, onEditInChat }: { bookId: string; r
       .then(setRelationships)
       .catch(() => {})
   }, [bookId, isMock, refreshKey])
+
+  // Open character detail panel when coming from search
+  useEffect(() => {
+    if (!jumpToCharId || characters.length === 0) return
+    const char = characters.find((c) => c.id === jumpToCharId)
+    if (char) { setSelected(char); onCharJumpHandled?.() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToCharId, characters])
 
   async function handleSaveRelationship(id: string, patch: Partial<RelationshipWithNames>) {
     if (isMock) { setRelationships((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r)); return }
@@ -665,12 +756,16 @@ function ChaptersTab({
   onResolveViaChat,
   onChapterReordered,
   onChapterAnalyzed,
+  jumpToChapterId,
+  onChapterJumpHandled,
 }: {
   bookId: string
   refreshKey?: number
   onResolveViaChat?: (message: string, flagId: string) => void
   onChapterReordered?: () => void
   onChapterAnalyzed?: () => void
+  jumpToChapterId?: string | null
+  onChapterJumpHandled?: () => void
 }) {
   const isMock = bookId === MOCK_BOOK_ID
   const [uploadMode, setUploadMode] = useState<'paste' | 'file'>('paste')
@@ -685,6 +780,14 @@ function ChaptersTab({
 
   const uploadRef = useRef<HTMLDivElement>(null)
   const pasteTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Expand a specific chapter when coming from search
+  useEffect(() => {
+    if (!jumpToChapterId) return
+    setExpandedChapterId(jumpToChapterId)
+    onChapterJumpHandled?.()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToChapterId])
 
   useEffect(() => {
     if (isMock) return
