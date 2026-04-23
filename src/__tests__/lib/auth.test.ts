@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { type Client } from '@libsql/client'
 import { createTestDb } from '../helpers/db'
-import { createDbMock } from '../helpers/mockDb'
-import type Database from 'better-sqlite3'
+import { createDbMock, seed, getRow } from '../helpers/mockDb'
 import { nanoid } from 'nanoid'
 
-let testDb: Database.Database
+let testDb: Client
 vi.mock('@/db', () => createDbMock(() => testDb))
 vi.mock('next/headers', () => ({
   cookies: vi.fn(() => ({ get: vi.fn(() => undefined) })),
@@ -18,8 +18,8 @@ import {
   clearSessionCookie,
 } from '@/lib/auth'
 
-beforeEach(() => {
-  testDb = createTestDb()
+beforeEach(async () => {
+  testDb = await createTestDb()
 })
 
 // ── Cookie helpers ─────────────────────────────────────────────────────────────
@@ -55,35 +55,39 @@ describe('clearSessionCookie()', () => {
 
 // ── Session CRUD ───────────────────────────────────────────────────────────────
 
-function insertUser(db: Database.Database) {
+async function insertUser(client: Client) {
   const id = nanoid()
-  db.prepare(
-    `INSERT INTO users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)`
-  ).run(id, 'Test User', 'test@example.com', 'hash', Date.now())
+  await seed(
+    client,
+    'INSERT INTO users (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)',
+    [id, 'Test User', 'test@example.com', 'hash', Date.now()]
+  )
   return id
 }
 
 describe('createSession()', () => {
   it('returns a non-empty token string', async () => {
-    const userId = insertUser(testDb)
+    const userId = await insertUser(testDb)
     const token = await createSession(userId)
     expect(typeof token).toBe('string')
     expect(token.length).toBeGreaterThan(0)
   })
 
   it('stores the session in the database', async () => {
-    const userId = insertUser(testDb)
+    const userId = await insertUser(testDb)
     const token = await createSession(userId)
-    const row = testDb.prepare('SELECT * FROM sessions WHERE token = ?').get(token) as
-      | { token: string; user_id: string; expires_at: number }
-      | undefined
+    const row = await getRow<{ token: string; user_id: string; expires_at: number }>(
+      testDb,
+      'SELECT * FROM sessions WHERE token = ?',
+      [token]
+    )
     expect(row).toBeDefined()
     expect(row!.user_id).toBe(userId)
     expect(row!.expires_at).toBeGreaterThan(Date.now())
   })
 
   it('generates unique tokens on successive calls', async () => {
-    const userId = insertUser(testDb)
+    const userId = await insertUser(testDb)
     const tokens = new Set(
       await Promise.all(Array.from({ length: 10 }, () => createSession(userId)))
     )
@@ -93,10 +97,10 @@ describe('createSession()', () => {
 
 describe('deleteSession()', () => {
   it('removes the session from the database', async () => {
-    const userId = insertUser(testDb)
+    const userId = await insertUser(testDb)
     const token = await createSession(userId)
     await deleteSession(token)
-    const row = testDb.prepare('SELECT * FROM sessions WHERE token = ?').get(token)
+    const row = await getRow(testDb, 'SELECT * FROM sessions WHERE token = ?', [token])
     expect(row).toBeUndefined()
   })
 
@@ -107,7 +111,7 @@ describe('deleteSession()', () => {
 
 describe('getSessionUser()', () => {
   it('returns the user for a valid, non-expired token', async () => {
-    const userId = insertUser(testDb)
+    const userId = await insertUser(testDb)
     const token = await createSession(userId)
     const user = await getSessionUser(token)
     expect(user).not.toBeNull()
@@ -121,11 +125,13 @@ describe('getSessionUser()', () => {
   })
 
   it('returns null for an expired token', async () => {
-    const userId = insertUser(testDb)
+    const userId = await insertUser(testDb)
     const token = nanoid(48)
-    testDb.prepare(
-      `INSERT INTO sessions (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)`
-    ).run(token, userId, Date.now() - 1000, Date.now())
+    await seed(
+      testDb,
+      'INSERT INTO sessions (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
+      [token, userId, Date.now() - 1000, Date.now()]
+    )
     expect(await getSessionUser(token)).toBeNull()
   })
 })

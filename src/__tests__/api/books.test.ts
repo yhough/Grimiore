@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { type Client } from '@libsql/client'
 import { createTestDb } from '../helpers/db'
-import { createDbMock } from '../helpers/mockDb'
-import type Database from 'better-sqlite3'
+import { createDbMock, seed, getRow, getRows } from '../helpers/mockDb'
 import { nanoid } from 'nanoid'
 
-let testDb: Database.Database
+let testDb: Client
 vi.mock('@/db', () => createDbMock(() => testDb))
 vi.mock('next/headers', () => ({
   cookies: vi.fn(() => ({ get: vi.fn(() => undefined) })),
@@ -28,17 +28,22 @@ function makeRequest(method: string, body?: unknown): Request {
   })
 }
 
-function seedBook(db: Database.Database, overrides: Partial<{ id: string; title: string; genre: string }> = {}) {
+async function seedBook(
+  client: Client,
+  overrides: Partial<{ id: string; title: string; genre: string }> = {}
+) {
   const id = overrides.id ?? nanoid()
   const now = Date.now()
-  db.prepare(
-    'INSERT INTO books (id, title, genre, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, overrides.title ?? 'Test Book', overrides.genre ?? 'Fantasy', now, now)
+  await seed(
+    client,
+    'INSERT INTO books (id, title, genre, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    [id, overrides.title ?? 'Test Book', overrides.genre ?? 'Fantasy', now, now]
+  )
   return id
 }
 
-beforeEach(() => {
-  testDb = createTestDb()
+beforeEach(async () => {
+  testDb = await createTestDb()
 })
 
 describe('GET /api/books', () => {
@@ -48,9 +53,9 @@ describe('GET /api/books', () => {
   })
 
   it('returns books ordered by updated_at DESC', async () => {
-    seedBook(testDb, { id: 'a', title: 'Older' })
+    await seedBook(testDb, { id: 'a', title: 'Older' })
     await new Promise((r) => setTimeout(r, 5))
-    seedBook(testDb, { id: 'b', title: 'Newer' })
+    await seedBook(testDb, { id: 'b', title: 'Newer' })
     const books = await (await listBooks()).json()
     expect(books[0].title).toBe('Newer')
   })
@@ -80,7 +85,10 @@ describe('POST /api/books', () => {
       title: 'Char Book',
       characters: [{ name: 'Hero', role: 'protagonist' }, { name: 'Villain', role: 'antagonist' }],
     }))
-    const chars = testDb.prepare('SELECT name FROM characters ORDER BY name ASC').all() as Array<{ name: string }>
+    const chars = await getRows<{ name: string }>(
+      testDb,
+      'SELECT name FROM characters ORDER BY name ASC'
+    )
     expect(chars.map((c) => c.name)).toContain('Hero')
     expect(chars.map((c) => c.name)).toContain('Villain')
   })
@@ -90,8 +98,10 @@ describe('POST /api/books', () => {
       title: 'World Book',
       worldEntries: [{ name: 'The Forest', type: 'location', summary: 'Dark woods' }],
     }))
-    const entry = testDb.prepare("SELECT * FROM book_state_entries WHERE name = 'The Forest'").get() as
-      | { type: string; summary: string } | undefined
+    const entry = await getRow<{ type: string; summary: string }>(
+      testDb,
+      "SELECT * FROM book_state_entries WHERE name = 'The Forest'"
+    )
     expect(entry?.type).toBe('location')
     expect(entry?.summary).toBe('Dark woods')
   })
@@ -104,7 +114,7 @@ describe('GET /api/books/[id]', () => {
   })
 
   it('returns the book for a known id', async () => {
-    const id = seedBook(testDb, { title: 'Found Book' })
+    const id = await seedBook(testDb, { title: 'Found Book' })
     const res = await getBook(makeRequest('GET'), { params: { id } })
     expect(res.status).toBe(200)
     expect((await res.json()).title).toBe('Found Book')
@@ -118,13 +128,13 @@ describe('PATCH /api/books/[id]', () => {
   })
 
   it('returns 400 when title is set to empty string', async () => {
-    const id = seedBook(testDb)
+    const id = await seedBook(testDb)
     const res = await updateBook(makeRequest('PATCH', { title: '' }), { params: { id } })
     expect(res.status).toBe(400)
   })
 
   it('updates the title', async () => {
-    const id = seedBook(testDb, { title: 'Old' })
+    const id = await seedBook(testDb, { title: 'Old' })
     const book = await (await updateBook(makeRequest('PATCH', { title: 'New' }), { params: { id } })).json()
     expect(book.title).toBe('New')
   })
@@ -132,20 +142,24 @@ describe('PATCH /api/books/[id]', () => {
 
 describe('DELETE /api/books/[id]', () => {
   it('returns 204 and removes the book', async () => {
-    const id = seedBook(testDb)
+    const id = await seedBook(testDb)
     const res = await deleteBook(makeRequest('DELETE'), { params: { id } })
     expect(res.status).toBe(204)
-    expect(testDb.prepare('SELECT id FROM books WHERE id = ?').get(id)).toBeUndefined()
+    expect(await getRow(testDb, 'SELECT id FROM books WHERE id = ?', [id])).toBeUndefined()
   })
 
   it('cascades deletion to characters', async () => {
-    const bookId = seedBook(testDb)
+    const bookId = await seedBook(testDb)
     const now = Date.now()
-    testDb.prepare(
+    await seed(
+      testDb,
       `INSERT INTO characters (id, book_id, name, role, status, data, created_at, updated_at)
-       VALUES (?, ?, 'Hero', 'protagonist', 'unknown', '{}', ?, ?)`
-    ).run(nanoid(), bookId, now, now)
+       VALUES (?, ?, 'Hero', 'protagonist', 'unknown', '{}', ?, ?)`,
+      [nanoid(), bookId, now, now]
+    )
     await deleteBook(makeRequest('DELETE'), { params: { id: bookId } })
-    expect(testDb.prepare('SELECT id FROM characters WHERE book_id = ?').all(bookId)).toHaveLength(0)
+    expect(
+      await getRows(testDb, 'SELECT id FROM characters WHERE book_id = ?', [bookId])
+    ).toHaveLength(0)
   })
 })

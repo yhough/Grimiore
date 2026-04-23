@@ -18,17 +18,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   await execute(
     `UPDATE books
-     SET title   = COALESCE(?, title),
-         genre   = COALESCE(?, genre),
-         premise = ?,
-         logline = ?,
+     SET title      = COALESCE(?, title),
+         genre      = COALESCE(?, genre),
+         premise    = COALESCE(?, premise),
+         logline    = COALESCE(?, logline),
          updated_at = ?
      WHERE id = ?`,
     [
       title?.trim() ?? null,
       genre ?? null,
-      premise !== undefined ? (premise?.trim() || null) : undefined,
-      logline !== undefined ? (logline?.trim() || null) : undefined,
+      premise !== undefined ? (premise?.trim() || null) : null,
+      logline !== undefined ? (logline?.trim() || null) : null,
       Date.now(),
       params.id,
     ]

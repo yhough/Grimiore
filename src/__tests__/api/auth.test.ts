@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { type Client } from '@libsql/client'
 import { createTestDb } from '../helpers/db'
-import { createDbMock } from '../helpers/mockDb'
-import type Database from 'better-sqlite3'
+import { createDbMock, getRow } from '../helpers/mockDb'
 
-let testDb: Database.Database
+let testDb: Client
 vi.mock('@/db', () => createDbMock(() => testDb))
 vi.mock('next/headers', () => ({
   cookies: vi.fn(() => ({ get: vi.fn(() => undefined) })),
@@ -20,8 +20,8 @@ function makeRequest(body: unknown): Request {
   })
 }
 
-beforeEach(() => {
-  testDb = createTestDb()
+beforeEach(async () => {
+  testDb = await createTestDb()
 })
 
 describe('POST /api/auth/signup', () => {
@@ -54,8 +54,11 @@ describe('POST /api/auth/signup', () => {
 
   it('stores the user with a lowercased email', async () => {
     await signupHandler(makeRequest({ name: 'Bob', email: 'BOB@EXAMPLE.COM', password: 'supersecure' }))
-    const user = testDb.prepare('SELECT * FROM users WHERE email = ?').get('bob@example.com') as
-      | { name: string } | undefined
+    const user = await getRow<{ name: string }>(
+      testDb,
+      'SELECT * FROM users WHERE email = ?',
+      ['bob@example.com']
+    )
     expect(user?.name).toBe('Bob')
   })
 
