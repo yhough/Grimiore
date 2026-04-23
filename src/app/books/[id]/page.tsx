@@ -154,6 +154,10 @@ export default function BookPage({ params }: Props) {
             refreshKey={chaptersKey}
             onResolveViaChat={handleResolveViaChat}
             onChapterReordered={() => setTimelineKey((k) => k + 1)}
+            onChapterAnalyzed={() => {
+              setCharactersKey((k) => k + 1)
+              setTimelineKey((k) => k + 1)
+            }}
           />
         )}
         {tab === 'timeline' && <TimelineTab bookId={params.id} refreshKey={timelineKey} />}
@@ -643,11 +647,13 @@ function ChaptersTab({
   refreshKey,
   onResolveViaChat,
   onChapterReordered,
+  onChapterAnalyzed,
 }: {
   bookId: string
   refreshKey?: number
   onResolveViaChat?: (message: string, flagId: string) => void
   onChapterReordered?: () => void
+  onChapterAnalyzed?: () => void
 }) {
   const isMock = bookId === MOCK_BOOK_ID
   const [uploadMode, setUploadMode] = useState<'paste' | 'file'>('paste')
@@ -711,6 +717,7 @@ function ChaptersTab({
       setChapterTitle('')
       setChapterNumber('')
       setExpandedChapterId(processed.id)
+      onChapterAnalyzed?.()
       toast.success(`Chapter ${num} analyzed — ${processed.flags.length} flag${processed.flags.length === 1 ? '' : 's'} found`, { duration: 4000 })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'

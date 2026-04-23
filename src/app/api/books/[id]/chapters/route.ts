@@ -339,6 +339,39 @@ export async function POST(
       }
     }
 
+    // Upsert relationships extracted from this chapter
+    for (const rel of parsed.relationship_updates ?? []) {
+      const charA = db
+        .prepare('SELECT id FROM characters WHERE book_id = ? AND name = ?')
+        .get(params.id, rel.character_a) as { id: string } | undefined
+      const charB = db
+        .prepare('SELECT id FROM characters WHERE book_id = ? AND name = ?')
+        .get(params.id, rel.character_b) as { id: string } | undefined
+      if (!charA || !charB || charA.id === charB.id) continue
+
+      const [aId, bId] = [charA.id, charB.id].sort()
+      const type = rel.type ?? 'unknown'
+      const strength = Math.min(5, Math.max(1, rel.strength ?? 1))
+      const status = rel.status ?? 'unknown'
+
+      const existingRel = db
+        .prepare('SELECT id FROM character_relationships WHERE character_a_id = ? AND character_b_id = ?')
+        .get(aId, bId) as { id: string } | undefined
+
+      if (existingRel) {
+        db.prepare(
+          `UPDATE character_relationships SET type = ?, description = COALESCE(?, description),
+           strength = ?, status = ?, updated_at = ? WHERE id = ?`
+        ).run(type, rel.description ?? null, strength, status, Date.now(), existingRel.id)
+      } else {
+        db.prepare(
+          `INSERT INTO character_relationships
+             (id, book_id, character_a_id, character_b_id, type, description, strength, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(generateId(), params.id, aId, bId, type, rel.description ?? null, strength, status, Date.now(), Date.now())
+      }
+    }
+
     // Upsert lore / world-state entries
     for (const u of parsed.state_updates ?? []) {
       if (!u.name?.trim() || !u.type) continue
@@ -443,6 +476,14 @@ interface ChapterAnalysis {
     traits?: string[]
     notable_moments?: string[]
   }>
+  relationship_updates?: Array<{
+    character_a: string
+    character_b: string
+    type: 'ally' | 'enemy' | 'neutral' | 'romantic' | 'family' | 'mentor' | 'rival' | 'unknown'
+    description?: string
+    strength?: number
+    status?: 'active' | 'strained' | 'broken' | 'unknown'
+  }>
   state_updates: Array<{
     type: 'world_fact' | 'location' | 'faction' | 'event' | 'misc'
     name: string
@@ -524,6 +565,16 @@ Respond ONLY with valid JSON — no markdown fences, no commentary:
       "notable_moments": ["what happened to them in this chapter"]
     }
   ],
+  "relationship_updates": [
+    {
+      "character_a": "exact name as used in chapter",
+      "character_b": "exact name as used in chapter",
+      "type": "ally" | "enemy" | "neutral" | "romantic" | "family" | "mentor" | "rival" | "unknown",
+      "description": "one sentence describing the relationship as revealed in this chapter",
+      "strength": 1-5,
+      "status": "active" | "strained" | "broken" | "unknown"
+    }
+  ],
   "state_updates": [
     {
       "type": "location" | "faction" | "world_fact" | "event" | "misc",
@@ -559,6 +610,7 @@ Rules:
   "duplicate" = content that is repeated verbatim or near-verbatim from a previous chapter OR repeated within this chapter itself; use severity "error" if the entire chapter appears to be a duplicate of a previous one, "warning" for a repeated scene or passage
 - For duplicate detection: compare this chapter's opening and body against the PREVIOUS CHAPTER CONTENT FINGERPRINTS provided. Also scan within this chapter for any scenes, paragraphs, or passages that appear more than once.
 - Only flag real issues — don't invent problems
+- relationship_updates: only include pairs where the chapter clearly reveals or confirms their dynamic; strength 1=peripheral acquaintance, 3=significant bond, 5=defining relationship
 - Only include characters who actually appear in this chapter
 - Only include state_updates for newly established facts or significant updates
 - Keep the summary grounded in what actually happens in the chapter`
