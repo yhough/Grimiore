@@ -15,20 +15,21 @@ export function middleware(request: NextRequest) {
   }
 
   // Allow Next.js internals and static files
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/fonts/')
+  ) {
     return NextResponse.next()
   }
 
   const isPublicPage = PUBLIC_PATHS.includes(pathname)
 
+  // Only redirect to signup when there is definitely no cookie at all.
+  // Never redirect away from public pages here — the server components
+  // validate the session properly and handle stale-cookie cases.
   if (!token && !isPublicPage) {
-    const loginUrl = new URL('/login', request.url)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  if (token && isPublicPage) {
-    const homeUrl = new URL('/', request.url)
-    return NextResponse.redirect(homeUrl)
+    return NextResponse.redirect(new URL('/signup', request.url))
   }
 
   return NextResponse.next()

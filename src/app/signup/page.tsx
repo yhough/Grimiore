@@ -56,14 +56,17 @@ export default function SignupPage() {
         </div>
 
         <div>
+          <p className="text-xs font-medium tracking-widest text-muted-foreground/60 uppercase mb-3">
+            tomos
+          </p>
           <p
-            className="text-[22px] leading-snug text-foreground"
+            className="text-[21px] leading-snug text-foreground"
             style={{ fontFamily: 'var(--font-playfair)', fontStyle: 'italic' }}
           >
-            "A writer's greatest fear is forgetting what they already built."
+            A tome; a weighty written work or volume.
           </p>
           <p className="text-sm text-muted-foreground mt-5 leading-relaxed">
-            Tomos remembers everything — so you don't have to. Start writing and let the world take care of itself.
+            Bring your world to life.
           </p>
         </div>
 

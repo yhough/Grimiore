@@ -6,9 +6,13 @@ declare global {
 }
 
 function makeClient(): Client {
-  const url = process.env.TURSO_DATABASE_URL ?? 'file:local.db'
+  const url = process.env.TURSO_DATABASE_URL
   const authToken = process.env.TURSO_AUTH_TOKEN
-  return createClient({ url, authToken })
+  // Only use remote Turso when both credentials are present
+  if (url && authToken) {
+    return createClient({ url, authToken })
+  }
+  return createClient({ url: 'file:local.db' })
 }
 
 export const db = globalThis.__db ?? (globalThis.__db = makeClient())
@@ -182,15 +186,15 @@ async function runMigrations(): Promise<void> {
   ]
 
   for (const sql of tables) {
-    await db.execute(sql)
+    await db.execute({ sql, args: [] })
   }
 
-  // Non-destructive column migrations
+  // Non-destructive column migrations — silently skip if already applied
   const columnMigrations = [
     `ALTER TABLE users ADD COLUMN onboarded INTEGER NOT NULL DEFAULT 0`,
   ]
   for (const sql of columnMigrations) {
-    try { await db.execute(sql) } catch { /* column already exists */ }
+    try { await db.execute({ sql, args: [] }) } catch { /* already exists */ }
   }
 }
 
